@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Parking - Gestion Intelligente et Moderne</title>
+  <meta name="description" content="Solution complète et premium pour la gestion de parkings, d'employés et de places connectées.">
+  <!-- Polices Premium -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Icônes -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- CSS Principal -->
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+  <!-- Écran de Chargement -->
+  <div id="loader" class="loader-container">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- Conteneur Toast Notifications -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Navbar Principale (Masquée si non connecté) -->
+  <header id="main-header" class="main-header hidden">
+    <div class="header-container">
+      <div class="logo">
+        <i class="fa-solid fa-square-parking logo-icon"></i>
+        <span>Smart<span class="gradient-text">Parking</span></span>
+      </div>
+      <nav class="nav-menu">
+        <button id="btn-nav-dashboard" class="nav-item active"><i class="fa-solid fa-chart-line"></i> Dashboard</button>
+        <button id="btn-nav-profile" class="nav-item"><i class="fa-solid fa-user-gear"></i> Mon Profil</button>
+        <button id="btn-logout" class="nav-item logout-btn"><i class="fa-solid fa-right-from-bracket"></i> Déconnexion</button>
+      </nav>
+      <div class="user-badge">
+        <div class="user-avatar" id="header-avatar">U</div>
+        <div class="user-info">
+          <span class="user-name" id="header-user-name">Chargement...</span>
+          <span class="user-role" id="header-user-role">Rôle</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Contenu Principal -->
+  <main class="main-content">
+    
+    <!-- SECTION 1 : AUTHENTIFICATION -->
+    <section id="sec-auth" class="auth-section">
+      <div class="auth-card glass-panel">
+        <div class="auth-header">
+          <i class="fa-solid fa-square-parking auth-logo"></i>
+          <h1>Smart<span class="gradient-text">Parking</span></h1>
+          <p id="auth-subtitle">Connectez-vous à votre espace de gestion</p>
+        </div>
+
+        <!-- Onglets Authentification -->
+        <div class="auth-tabs">
+  <button id="tab-login" class="auth-tab active" onclick="switchAuthTab('login')">Connexion</button>
+  <button id="tab-register" class="auth-tab" onclick="switchAuthTab('register')">S'inscrire (Entreprise)</button>
+  <button id="tab-register-client" class="auth-tab" onclick="switchAuthTab('register-client')">S'inscrire (Client)</button>
+</div>
+
+        <!-- Formulaire de Connexion -->
+        <form id="form-login" class="auth-form">
+          <div class="form-group">
+            <label for="login-email"><i class="fa-solid fa-envelope"></i> Adresse Email</label>
+            <input type="email" id="login-email" required placeholder="exemple@entreprise.com">
+          </div>
+          <div class="form-group">
+            <label for="login-password"><i class="fa-solid fa-lock"></i> Mot de passe</label>
+            <input type="password" id="login-password" required placeholder="••••••••">
+          </div>
+          <div class="forgot-pwd-link">
+            <a href="#" onclick="showForgotPasswordForm(event)">Mot de passe oublié ?</a>
+          </div>
+          <button type="submit" id="btn-submit-login" class="btn btn-primary btn-full">
+            <span>Se Connecter</span> <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </form>
+
+        <!-- Formulaire d'Inscription Entreprise -->
+        <form id="form-register" class="auth-form hidden">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="reg-name"><i class="fa-solid fa-building"></i> Nom de l'Entreprise</label>
+              <input type="text" id="reg-name" required placeholder="Nom commercial">
+            </div>
+            <div class="form-group">
+              <label for="reg-email"><i class="fa-solid fa-envelope"></i> Email de Contact</label>
+              <input type="email" id="reg-email" required placeholder="contact@entreprise.com">
+            </div>
+            <div class="form-group">
+              <label for="reg-phone"><i class="fa-solid fa-phone"></i> Téléphone</label>
+              <input type="tel" id="reg-phone" required placeholder="0612345678" pattern="[0-9]{10}">
+            </div>
+            <div class="form-group">
+              <label for="reg-siret"><i class="fa-solid fa-id-card"></i> Numéro SIRET</label>
+              <input type="text" id="reg-siret" required placeholder="14 chiffres">
+            </div>
+            <div class="form-group form-full">
+              <label for="reg-address"><i class="fa-solid fa-map-location-dot"></i> Adresse du Siège Social</label>
+              <input type="text" id="reg-address" required placeholder="123 rue des Lilas, Paris">
+            </div>
+            <div class="form-group">
+              <label for="reg-password"><i class="fa-solid fa-lock"></i> Mot de passe</label>
+              <input type="password" id="reg-password" required placeholder="Min. 6 caractères">
+            </div>
+            <div class="form-group">
+              <label for="reg-confirm-password"><i class="fa-solid fa-lock"></i> Confirmation</label>
+              <input type="password" id="reg-confirm-password" required placeholder="Min. 6 caractères">
+            </div>
+          </div>
+          <button type="submit" id="btn-submit-register" class="btn btn-primary btn-full margin-top-md">
+            <span>Créer un compte Entreprise</span> <i class="fa-solid fa-circle-check"></i>
+          </button>
+        </form>
+
+        <!-- Formulaire d'Inscription Client -->
+        <form id="form-register-client" class="auth-form hidden">
+  <div class="form-grid">
+    <div class="form-group">
+      <label for="reg-client-name"><i class="fa-solid fa-user"></i> Nom complet</label>
+      <input type="text" id="reg-client-name" required placeholder="Jean Dupont">
+    </div>
+    <div class="form-group">
+      <label for="reg-client-email"><i class="fa-solid fa-envelope"></i> Email</label>
+      <input type="email" id="reg-client-email" required placeholder="client@exemple.com">
+    </div>
+    <div class="form-group">
+      <label for="reg-client-phone"><i class="fa-solid fa-phone"></i> Téléphone</label>
+      <input type="tel" id="reg-client-phone" required placeholder="0612345678" pattern="[0-9]{10}">
+    </div>
+    <div class="form-group">
+      <label for="reg-client-password"><i class="fa-solid fa-lock"></i> Mot de passe</label>
+      <input type="password" id="reg-client-password" required placeholder="Min. 6 caractères">
+    </div>
+    <div class="form-group">
+      <label for="reg-client-confirm-password"><i class="fa-solid fa-lock"></i> Confirmation</label>
+      <input type="password" id="reg-client-confirm-password" required placeholder="Min. 6 caractères">
+    </div>
+  </div>
+  <button type="submit" id="btn-submit-register-client" class="btn btn-primary btn-full">
+    <span>Créer mon compte Client</span> <i class="fa-solid fa-user-plus"></i>
+  </button>
+</form>
+          <div class="form-group">
+            <label for="reg-client-email"><i class="fa-solid fa-envelope"></i> Email</label>
+            <input type="email" id="reg-client-email" required placeholder="client@exemple.com">
+          </div>
+          <div class="form-group">
+            <label for="reg-client-password"><i class="fa-solid fa-lock"></i> Mot de passe</label>
+            <input type="password" id="reg-client-password" required placeholder="••••••••">
+          </div>
+            <div class="form-group">
+              <label for="reg-client-vehicle-type"><i class="fa-solid fa-car"></i> Type de véhicule</label>
+              <select id="reg-client-vehicle-type">
+                <option value="car">Voiture</option>
+                <option value="motorcycle">Moto</option>
+                <option value="electric">Électrique</option>
+                <option value="handicap">PMR</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="reg-client-vehicle-plate"><i class="fa-solid fa-id-card"></i> Plaque d'immatriculation</label>
+              <input type="text" id="reg-client-vehicle-plate" required placeholder="AA123BB">
+            </div>
+            <div class="form-group">
+              <label for="reg-client-vehicle-serial"><i class="fa-solid fa-hashtag"></i> Numéro de série du véhicule</label>
+              <input type="text" id="reg-client-vehicle-serial" required placeholder="VF3123456789">
+            </div>
+        </form>
+
+        <!-- Formulaire de demande de Token (Mot de passe oublié) -->
+        <div id="forgot-password-panel" class="auth-form hidden">
+          <h3 class="panel-title">Réinitialisation du mot de passe</h3>
+          <p class="panel-desc">Entrez votre adresse email ci-dessous. Un code temporaire de réinitialisation sera généré dans notre boîte mail virtuelle de démonstration.</p>
+          <div class="form-group">
+            <label for="forgot-email"><i class="fa-solid fa-envelope"></i> Adresse Email</label>
+            <input type="email" id="forgot-email" placeholder="exemple@entreprise.com">
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="backToLogin()">Retour</button>
+            <button type="button" class="btn btn-primary" onclick="submitForgotPassword()">Envoyer le token</button>
+          </div>
+        </div>
+
+        <!-- Formulaire de saisie du Token et changement de MDP -->
+        <div id="reset-password-panel" class="auth-form hidden">
+          <h3 class="panel-title">Changer le mot de passe</h3>
+          <p class="panel-desc">Saisissez le token copié depuis la boîte mail virtuelle et votre nouveau mot de passe.</p>
+          <div class="form-group">
+            <label for="reset-token"><i class="fa-solid fa-key"></i> Token de réinitialisation</label>
+            <input type="text" id="reset-token" placeholder="Collez le token reçu">
+          </div>
+          <div class="form-group">
+            <label for="reset-new-password"><i class="fa-solid fa-lock"></i> Nouveau mot de passe</label>
+            <input type="password" id="reset-new-password" placeholder="Min. 6 caractères">
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="backToLogin()">Annuler</button>
+            <button type="button" class="btn btn-primary" onclick="submitResetPassword()">Mettre à jour le mot de passe</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2 : DASHBOARDS (Masquée par défaut) -->
+    <section id="sec-dashboard" class="dashboard-section hidden">
+      
+      <!-- 2.A : DASHBOARD SUPER ADMIN -->
+      <div id="dash-super_admin" class="dash-panel hidden">
+        <div class="welcome-banner glass-panel">
+          <div class="banner-text">
+            <h2>Espace Super Administrateur</h2>
+            <p>Supervisez les demandes d'inscription des entreprises et les approbations de nouveaux parkings.</p>
+          </div>
+          <div class="banner-stat">
+            <div class="stat-badge"><i class="fa-solid fa-shield-halved"></i> Admin Mode</div>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <!-- Approbation des Entreprises -->
+          <div class="grid-card glass-panel">
+            <h3><i class="fa-solid fa-building-circle-check text-cyan"></i> Inscriptions d'Entreprises en attente</h3>
+            <div class="table-container">
+              <table id="tbl-admin-companies">
+                <thead>
+                  <tr>
+                    <th>Entreprise</th>
+                    <th>Email</th>
+                    <th>Téléphone</th>
+                    <th>SIRET</th>
+                    <th>Date d'inscription</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="6" class="text-center">Aucune entreprise en attente.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Approbation des Parkings -->
+          <div class="grid-card glass-panel">
+            <h3><i class="fa-solid fa-square-parking text-indigo"></i> Demandes d'Ajout de Parkings</h3>
+            <div class="table-container">
+              <table id="tbl-admin-parkings">
+                <thead>
+                  <tr>
+                    <th>Parking</th>
+                    <th>Entreprise</th>
+                    <th>Ville</th>
+                    <th>Places totales</th>
+                    <th>Tarif/H</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="6" class="text-center">Aucune demande en attente.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2.B : DASHBOARD COMPANY (ENTREPRISE) -->
+      <div id="dash-company" class="dash-panel hidden">
+        <div class="welcome-banner glass-panel">
+          <div class="banner-text">
+            <h2>Espace Entreprise</h2>
+            <p id="company-welcome-desc">Gérez vos parkings, vos places connectées et vos employés sur site.</p>
+          </div>
+          <button class="btn btn-primary" id="btn-open-request-parking" onclick="openRequestParkingModal()">
+            <i class="fa-solid fa-plus-circle"></i> Demander l'ajout d'un parking
+          </button>
+        </div>
+
+        <!-- Alerte Compte Non Validé -->
+        <div id="company-pending-alert" class="alert-box alert-warning hidden">
+          <i class="fa-solid fa-circle-exclamation alert-icon"></i>
+          <div class="alert-content">
+            <h4>Compte en attente de validation</h4>
+            <p>Votre compte d'entreprise est en cours d'examen par notre équipe d'administration. Vous pourrez demander l'ajout de parkings une fois votre compte approuvé.</p>
+          </div>
+        </div>
+
+        <!-- Liste des parkings existants -->
+        <div class="grid-card glass-panel margin-top-md">
+          <h3><i class="fa-solid fa-list-check text-cyan"></i> Vos Parkings Enregistrés</h3>
+          <div class="parkings-grid" id="company-parkings-container">
+            <div class="text-center pad-lg text-muted">Aucun parking enregistré. Demandez votre premier parking ci-dessus !</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2.C : DASHBOARD EMPLOYEE (EMPLOYÉ) -->
+      <div id="dash-employee" class="dash-panel hidden">
+        <div class="welcome-banner glass-panel">
+          <div class="banner-text">
+            <h2>Espace Agent de Parking</h2>
+            <p>Moniteur de terrain : Visualisez la grille de places et gérez le statut d'occupation en direct.</p>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <!-- Infos Parking Assigné -->
+          <div class="grid-card glass-panel">
+            <h3><i class="fa-solid fa-info-circle text-indigo"></i> Parking Assigné</h3>
+            <div class="parking-details-card" id="employee-parking-details">
+              <p class="text-center pad-md text-muted">Récupération des informations du parking...</p>
+            </div>
+          </div>
+
+          <!-- Contrôle des Places -->
+          <div class="grid-card glass-panel">
+            <h3><i class="fa-solid fa-grip text-cyan"></i> Grille en Direct des Places</h3>
+            <div class="live-spots-grid" id="employee-spots-grid">
+              <p class="text-center pad-md text-muted">Sélectionnez ou attendez le chargement...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2.D : DASHBOARD CLIENT (CUSTOMER) -->
+      <div id="dash-customer" class="dash-panel hidden">
+        <div class="welcome-banner glass-panel">
+          <div class="banner-text">
+            <h2>Espace Client</h2>
+            <p>Bienvenue sur Smart Parking. Vous pouvez gérer vos informations personnelles et vos véhicules depuis cet espace.</p>
+          </div>
+        </div>
+
+        <div class="grid-card glass-panel margin-top-md">
+          <h3><i class="fa-solid fa-car text-cyan"></i> Mes Informations Véhicule</h3>
+          <form id="form-client-vehicle" class="dashboard-form">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="client-plate">Plaque d'immatriculation</label>
+                <input type="text" id="client-plate" placeholder="AA123BB">
+              </div>
+              <div class="form-group">
+                <label for="client-serial">Numéro de série du véhicule</label>
+                <input type="text" id="client-serial" placeholder="VF3123456789">
+              </div>
+              <div class="form-group">
+                <label for="client-vtype">Type de véhicule</label>
+                <select id="client-vtype">
+                  <option value="car">Voiture Standard</option>
+                  <option value="motorcycle">Moto</option>
+                  <option value="electric">Voiture Électrique</option>
+                  <option value="handicap">Véhicule P.M.R.</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary margin-top-sm"><i class="fa-solid fa-floppy-disk"></i> Enregistrer le véhicule</button>
+          </form>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- SECTION 3 : GESTION DE PROFIL (Masquée par défaut) -->
+    <section id="sec-profile" class="profile-section hidden">
+      <div class="welcome-banner glass-panel">
+        <div class="banner-text">
+          <h2>Gestion de Compte & Sécurité</h2>
+          <p>Mettez à jour vos informations de profil et modifiez votre mot de passe pour sécuriser votre espace.</p>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <!-- Infos Profil -->
+        <div class="grid-card glass-panel">
+          <h3><i class="fa-solid fa-user-edit text-cyan"></i> Modifier mes Informations</h3>
+          <form id="form-profile-info" class="dashboard-form">
+            <div class="form-group">
+              <label for="profile-name">Nom complet / Nom Entreprise</label>
+              <input type="text" id="profile-name" required>
+            </div>
+            <div class="form-group">
+              <label for="profile-phone">Numéro de téléphone</label>
+              <input type="tel" id="profile-phone" required pattern="[0-9]{10}">
+            </div>
+            <button type="submit" class="btn btn-primary margin-top-sm"><i class="fa-solid fa-check-circle"></i> Mettre à jour</button>
+          </form>
+        </div>
+
+        <!-- Sécurité / Mot de passe -->
+        <div class="grid-card glass-panel">
+          <h3><i class="fa-solid fa-shield-halved text-indigo"></i> Changer de Mot de Passe</h3>
+          <form id="form-profile-password" class="dashboard-form">
+            <p class="form-helper text-muted">Pour changer de mot de passe directement en étant connecté, ou réinitialiser :</p>
+            <div class="form-group">
+              <label for="profile-new-password">Nouveau mot de passe</label>
+              <input type="password" id="profile-new-password" required minlength="6" placeholder="Minimum 6 caractères">
+            </div>
+            <div class="form-group">
+              <label for="profile-confirm-password">Confirmer le nouveau mot de passe</label>
+              <input type="password" id="profile-confirm-password" required minlength="6" placeholder="Minimum 6 caractères">
+            </div>
+            <button type="submit" class="btn btn-primary margin-top-sm"><i class="fa-solid fa-lock-open"></i> Modifier le mot de passe</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL : DEMANDE D'AJOUT DE PARKING (Pour l'Entreprise) -->
+  <div id="modal-request-parking" class="modal-overlay hidden">
+    <div class="modal-card glass-panel animate-zoom">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-square-parking text-indigo"></i> Demander l'ajout d'un Parking</h3>
+        <button class="btn-close-modal" onclick="closeRequestParkingModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="form-request-parking" class="modal-form">
+        <div class="form-grid">
+          <div class="form-group form-full">
+            <label for="park-name">Nom du Parking</label>
+            <input type="text" id="park-name" required placeholder="ex: Parking Indigo Centre">
+          </div>
+          <div class="form-group form-full">
+            <label for="park-address">Adresse</label>
+            <input type="text" id="park-address" required placeholder="ex: 15 Place de la Comédie">
+          </div>
+          <div class="form-group">
+            <label for="park-city">Ville</label>
+            <input type="text" id="park-city" required placeholder="ex: Montpellier">
+          </div>
+          <div class="form-group">
+            <label for="park-zip">Code Postal</label>
+            <input type="text" id="park-zip" required placeholder="ex: 34000">
+          </div>
+          <div class="form-group">
+            <label for="park-spots">Capacité totale (places)</label>
+            <input type="number" id="park-spots" required min="1" placeholder="ex: 50">
+          </div>
+          <div class="form-group">
+            <label for="park-price">Prix par Heure (EUR)</label>
+            <input type="number" id="park-price" required min="0" step="0.10" placeholder="ex: 2.50">
+          </div>
+          <div class="form-group form-full">
+            <label><i class="fa-solid fa-clock"></i> Horaires de fonctionnement</label>
+            <div class="flex-row">
+              <label class="checkbox-container">
+                <input type="checkbox" id="park-24h" onchange="toggleHoursFields(this)">
+                <span class="checkmark"></span> Ouvert 24h/24
+              </label>
+              <div id="hours-fields-group" class="flex-row inline-fields">
+                <input type="text" id="park-open" placeholder="00:00" style="width: 80px;"> à 
+                <input type="text" id="park-close" placeholder="23:59" style="width: 80px;">
+              </div>
+            </div>
+          </div>
+          <div class="form-group form-full">
+            <label>Équipements & Commodités disponibles</label>
+            <div class="checkbox-grid">
+              <label class="checkbox-container">
+                <input type="checkbox" name="amenities" value="elevator">
+                <span class="checkmark"></span> Ascenseur
+              </label>
+              <label class="checkbox-container">
+                <input type="checkbox" name="amenities" value="restroom">
+                <span class="checkmark"></span> Toilettes
+              </label>
+              <label class="checkbox-container">
+                <input type="checkbox" name="amenities" value="ev_charging">
+                <span class="checkmark"></span> Bornes Électriques
+              </label>
+              <label class="checkbox-container">
+                <input type="checkbox" name="amenities" value="disabled_access">
+                <span class="checkmark"></span> Accès P.M.R.
+              </label>
+              <label class="checkbox-container">
+                <input type="checkbox" name="amenities" value="security_camera">
+                <span class="checkmark"></span> Vidéosurveillance
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeRequestParkingModal()">Annuler</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Soumettre la demande</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL : GESTION DES PLACES D'UN PARKING (Pour l'Entreprise) -->
+  <div id="modal-manage-spots" class="modal-overlay hidden">
+    <div class="modal-card modal-large glass-panel animate-zoom">
+      <div class="modal-header">
+        <div>
+          <h3 id="spots-modal-title"><i class="fa-solid fa-grip text-cyan"></i> Gestion des places</h3>
+          <p class="modal-subtitle" id="spots-modal-subtitle">Ajoutez et surveillez les places de votre parking</p>
+        </div>
+        <button class="btn-close-modal" onclick="closeManageSpotsModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="modal-body-split">
+        <!-- Colonne Gauche : Formulaire Ajouter une Place -->
+        <div class="split-column left-col">
+          <h4><i class="fa-solid fa-circle-plus text-indigo"></i> Ajouter une place</h4>
+          <form id="form-add-spot" class="modal-form">
+            <input type="hidden" id="spot-parking-id">
+            
+            <div class="form-group">
+              <label for="spot-floor">Étage</label>
+              <input type="number" id="spot-floor" value="0" required placeholder="0 pour RDC">
+            </div>
+
+            <div class="form-group">
+              <label for="spot-zone">Zone (ex: A, B, C)</label>
+              <input type="text" id="spot-zone" value="A" required maxlength="2" style="text-transform: uppercase;">
+            </div>
+
+            <div class="form-group">
+              <label for="spot-type">Emplacement</label>
+              <select id="spot-type">
+                <option value="outdoor">Extérieur (Outdoor)</option>
+                <option value="indoor">Intérieur (Indoor)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="checkbox-container">
+                <input type="checkbox" id="spot-covered">
+                <span class="checkmark"></span> Place Couverte
+              </label>
+            </div>
+
+            <div class="form-group">
+              <label class="checkbox-container">
+                <input type="checkbox" id="spot-handicap">
+                <span class="checkmark"></span> Place P.M.R. (Handicapé)
+              </label>
+            </div>
+
+            <div class="form-group">
+              <label class="checkbox-container">
+                <input type="checkbox" id="spot-electric">
+                <span class="checkmark"></span> Recharge Électrique
+              </label>
+            </div>
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="spot-width">Largeur (m)</label>
+                <input type="number" id="spot-width" value="2.5" step="0.1">
+              </div>
+              <div class="form-group">
+                <label for="spot-length">Longueur (m)</label>
+                <input type="number" id="spot-length" value="5" step="0.1">
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-full margin-top-sm">
+              <i class="fa-solid fa-plus-circle"></i> Générer et Ajouter la place
+            </button>
+          </form>
+        </div>
+
+        <!-- Colonne Droite : Grille des places existantes -->
+        <div class="split-column right-col">
+          <div class="header-row">
+            <h4><i class="fa-solid fa-list text-cyan"></i> Liste des places générées (<span id="spots-count-badge">0</span>)</h4>
+            <span class="capacity-alert text-muted" id="spots-capacity-alert"></span>
+          </div>
+          <div class="spots-list-grid" id="spots-list-container">
+            <!-- Injecté en JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL : GESTION DE L'EMPLOYÉ D'UN PARKING (Pour l'Entreprise) -->
+  <div id="modal-manage-employee" class="modal-overlay hidden">
+    <div class="modal-card glass-panel animate-zoom">
+      <div class="modal-header">
+        <div>
+          <h3><i class="fa-solid fa-user-tie text-indigo"></i> Employé affecté au Parking</h3>
+          <p class="modal-subtitle" id="employee-modal-subtitle">1 Employé maximum par parking approuvé</p>
+        </div>
+        <button class="btn-close-modal" onclick="closeManageEmployeeModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="modal-body-content">
+        <!-- Cas 1 : Aucun employé de créé -> Formulaire de création -->
+        <form id="form-create-employee" class="modal-form hidden">
+          <input type="hidden" id="employee-parking-id">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="emp-name"><i class="fa-solid fa-user"></i> Nom complet</label>
+              <input type="text" id="emp-name" required placeholder="Jean Dupont">
+            </div>
+            <div class="form-group">
+              <label for="emp-email"><i class="fa-solid fa-envelope"></i> Email professionnel</label>
+              <input type="email" id="emp-email" required placeholder="j.dupont@entreprise.com">
+            </div>
+            <div class="form-group">
+              <label for="emp-phone"><i class="fa-solid fa-phone"></i> Téléphone</label>
+              <input type="tel" id="emp-phone" required placeholder="0698765432" pattern="[0-9]{10}">
+            </div>
+            <div class="form-group">
+              <label for="emp-password"><i class="fa-solid fa-lock"></i> Mot de passe de connexion</label>
+              <input type="password" id="emp-password" required placeholder="Min. 6 caractères" value="Employe123!">
+            </div>
+            <div class="form-group">
+              <label for="emp-position">Rôle opérationnel</label>
+              <select id="emp-position">
+                <option value="agent">Agent d'accueil</option>
+                <option value="supervisor">Superviseur de site</option>
+                <option value="manager">Manager de site</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label><i class="fa-solid fa-clock"></i> Heures de service</label>
+              <div class="flex-row inline-fields">
+                <input type="text" id="emp-shift-start" value="08:00" style="width: 70px;"> à 
+                <input type="text" id="emp-shift-end" value="17:00" style="width: 70px;">
+              </div>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-full margin-top-md">
+            <i class="fa-solid fa-user-plus"></i> Créer le compte Employé et envoyer l'email
+          </button>
+        </form>
+
+        <!-- Cas 2 : Employé déjà existant -> Vue des détails -->
+        <div id="employee-details-view" class="employee-details-view hidden">
+          <div class="employee-profile-card">
+            <div class="emp-avatar"><i class="fa-solid fa-user-tie"></i></div>
+            <div class="emp-meta">
+              <h4 id="view-emp-name">Nom de l'employé</h4>
+              <span class="badge badge-indigo" id="view-emp-number">EMP-0001</span>
+              <p id="view-emp-position"><i class="fa-solid fa-briefcase"></i> Position</p>
+            </div>
+          </div>
+          <div class="emp-info-grid">
+            <div class="emp-info-item">
+              <span class="info-label"><i class="fa-solid fa-envelope"></i> Email</span>
+              <span class="info-val" id="view-emp-email">email@test.com</span>
+            </div>
+            <div class="emp-info-item">
+              <span class="info-label"><i class="fa-solid fa-phone"></i> Téléphone</span>
+              <span class="info-val" id="view-emp-phone">0600000000</span>
+            </div>
+            <div class="emp-info-item">
+              <span class="info-label"><i class="fa-solid fa-clock"></i> Shift</span>
+              <span class="info-val" id="view-emp-shift">08:00 à 17:00</span>
+            </div>
+            <div class="emp-info-item">
+              <span class="info-label"><i class="fa-solid fa-calendar-day"></i> Date d'embauche</span>
+              <span class="info-val" id="view-emp-date">-</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- VIRTUAL EMAIL INBOX PANEL (Discret Floating Widget - WOW Factor) -->
+  <div id="email-inbox-widget" class="email-inbox-widget">
+    <!-- Bouton enveloppe flottant -->
+    <button id="btn-email-trigger" class="btn-email-trigger" onclick="toggleVirtualInbox()" title="Ouvrir la boîte mail simulée">
+      <i class="fa-solid fa-envelope"></i>
+      <span class="email-badge" id="email-badge-count">0</span>
+    </button>
+
+    <!-- Tiroir coulissant (Drawer) -->
+    <div id="email-drawer" class="email-drawer hidden">
+      <div class="drawer-header">
+        <h3><i class="fa-solid fa-inbox"></i> Boîte Mail Virtuelle (Simulation)</h3>
+        <div class="drawer-actions">
+          <button class="btn-clear-inbox" onclick="clearSimulatedEmails()" title="Vider la boîte mail"><i class="fa-solid fa-trash-can"></i></button>
+          <button class="btn-close-drawer" onclick="toggleVirtualInbox()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
+      <p class="drawer-subtitle">Les identifiants et tokens de réinitialisation envoyés par le système apparaissent ici en temps réel pour faciliter vos tests !</p>
+      
+      <div class="emails-list-container" id="virtual-emails-list">
+        <div class="no-emails">
+          <i class="fa-solid fa-envelope-open-text"></i>
+          <p>Aucun email reçu pour le moment.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Script Principal -->
+  <script src="app.js"></script>
+</body>
+</html>

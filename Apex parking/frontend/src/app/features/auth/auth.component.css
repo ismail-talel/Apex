@@ -1,0 +1,194 @@
+.auth-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.auth-container {
+  width: 100%;
+  max-width: 520px;
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.auth-tagline {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  max-width: 320px;
+}
+
+.btn-map-link {
+  margin-top: 1rem;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: var(--primary);
+  padding: 0.5rem 1rem;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+}
+
+.btn-map-link:hover {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.demo-accounts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.demo-credentials {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.82rem;
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.demo-credentials strong {
+  font-size: 0.85rem;
+  margin-bottom: 0.15rem;
+}
+
+.demo-client strong { color: var(--primary); }
+.demo-admin strong { color: #f472b6; }
+.demo-company strong { color: #38bdf8; }
+
+.demo-credentials code {
+  color: var(--accent);
+  background: rgba(0, 0, 0, 0.25);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+}
+
+.btn-fill-demo {
+  align-self: flex-start;
+  margin-top: 0.35rem;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  color: var(--primary);
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.btn-fill-demo:hover {
+  background: rgba(99, 102, 241, 0.25);
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 0.5rem;
+  background: rgba(10, 10, 15, 0.4);
+  border: 1px solid var(--glass-border);
+  padding: 0.35rem;
+  border-radius: var(--border-radius-md);
+  margin-bottom: 1.5rem;
+}
+
+.auth-tabs button {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  padding: 0.6rem 0.5rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.auth-tabs button.active {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.25);
+}
+
+.auth-footer-links {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1.5rem;
+  font-size: 0.85rem;
+}
+
+.auth-footer-links a {
+  color: var(--primary);
+  text-decoration: none;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.auth-footer-links a:hover {
+  color: var(--secondary);
+  text-decoration: underline;
+}
+
+/* Toast System inside Auth */
+.toast-container {
+  position: fixed;
+  top: 2rem;
+  right: 2rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1rem 1.5rem;
+  border-radius: var(--border-radius-md);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  font-size: 0.9rem;
+  color: #fff;
+  border: 1px solid;
+  animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toast-success {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #34d399;
+}
+
+.toast-error {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}

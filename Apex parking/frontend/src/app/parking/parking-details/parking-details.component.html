@@ -1,0 +1,176 @@
+<div class="details-page">
+  <!-- Top bar -->
+  <header class="details-topbar">
+    <button (click)="goBack()" class="back-btn" type="button">
+      <i class="fa-solid fa-arrow-left"></i>
+      <span>Retour à la carte</span>
+    </button>
+  </header>
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="state-panel loading-panel">
+    <div class="spinner"></div>
+    <p>Chargement des détails du parking...</p>
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="!isLoading && errorMessage" class="state-panel error-panel">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    <p>{{ errorMessage }}</p>
+    <button class="btn-retry" type="button" (click)="retryLoad()">Réessayer</button>
+  </div>
+
+  <!-- Content -->
+  <div *ngIf="!isLoading && parking as p" class="details-layout">
+    <!-- Hero -->
+    <section class="hero-card glass-panel">
+      <div class="hero-main">
+        <span class="hero-city">{{ p.city }}</span>
+        <h1>{{ p.name }}</h1>
+        <p class="hero-address">
+          <i class="fa-solid fa-location-dot"></i>
+          {{ p.address }}, {{ p.city }}
+        </p>
+      </div>
+      <div class="hero-badges">
+        <span class="status-badge" [style.background]="getStatusColor()">{{ getStatusText() }}</span>
+        <span class="rating-badge" *ngIf="p.rating">
+          <i class="fa-solid fa-star"></i> {{ formatRating(p.rating) }}/5
+        </span>
+      </div>
+    </section>
+
+    <!-- Stats -->
+    <section class="stats-row">
+      <div class="stat-card glass-panel">
+        <i class="fa-solid fa-square-parking"></i>
+        <div>
+          <span class="stat-value">{{ p.availableSpots }}/{{ p.totalSpots }}</span>
+          <span class="stat-label">Places libres</span>
+        </div>
+      </div>
+      <div class="stat-card glass-panel">
+        <i class="fa-solid fa-coins"></i>
+        <div>
+          <span class="stat-value">{{ formatPrice(p.pricePerHour) }}</span>
+          <span class="stat-label">Tarif horaire</span>
+        </div>
+      </div>
+      <div class="stat-card glass-panel">
+        <i class="fa-solid fa-clock"></i>
+        <div>
+          <span class="stat-value schedule">{{ getScheduleText() }}</span>
+          <span class="stat-label">Horaires</span>
+        </div>
+      </div>
+      <div class="stat-card glass-panel" *ngIf="p.contactPhone">
+        <i class="fa-solid fa-phone"></i>
+        <div>
+          <span class="stat-value">{{ p.contactPhone }}</span>
+          <span class="stat-label">Contact</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Availability meter -->
+    <section class="meter-card glass-panel">
+      <div class="meter-header">
+        <span>Taux de disponibilité</span>
+        <strong>{{ getAvailabilityPercent() }}% libre</strong>
+      </div>
+      <div class="meter-track">
+        <div
+          class="meter-fill available"
+          [style.width.%]="getAvailabilityPercent()"
+          [style.background]="getStatusColor()">
+        </div>
+        <div
+          class="meter-fill occupied"
+          [style.width.%]="getOccupiedPercent()">
+        </div>
+      </div>
+      <div class="meter-legend">
+        <span><i class="dot available"></i> {{ p.availableSpots }} disponibles</span>
+        <span><i class="dot occupied"></i> {{ p.totalSpots - p.availableSpots }} occupées</span>
+      </div>
+    </section>
+
+    <!-- Body: info + map -->
+    <div class="content-grid">
+      <section class="info-card glass-panel">
+        <h2><i class="fa-solid fa-circle-info"></i> Informations</h2>
+
+        <div class="info-list">
+          <div class="info-row">
+            <i class="fa-solid fa-map-pin"></i>
+            <div>
+              <span class="label">Adresse complète</span>
+              <span class="value">{{ p.address }}</span>
+            </div>
+          </div>
+          <div class="info-row">
+            <i class="fa-solid fa-city"></i>
+            <div>
+              <span class="label">Ville</span>
+              <span class="value">{{ p.city }}</span>
+            </div>
+          </div>
+          <div class="info-row">
+            <i class="fa-solid fa-star"></i>
+            <div>
+              <span class="label">Note clients</span>
+              <span class="value">{{ p.rating ? formatRating(p.rating) + ' / 5' : 'Pas encore noté' }}</span>
+            </div>
+          </div>
+          <div class="info-row">
+            <i class="fa-solid fa-location-crosshairs"></i>
+            <div>
+              <span class="label">Coordonnées GPS</span>
+              <span class="value mono">{{ p.lat | number:'1.4-4' }}, {{ p.lng | number:'1.4-4' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="features-block" *ngIf="p.features?.length">
+          <h3>Équipements & services</h3>
+          <div class="features">
+            <span *ngFor="let feature of p.features" class="feature-tag">
+              <i class="fa-solid fa-check"></i> {{ feature }}
+            </span>
+          </div>
+        </div>
+
+        <div class="description-block" *ngIf="p.description">
+          <h3>Description</h3>
+          <p>{{ p.description }}</p>
+        </div>
+      </section>
+
+      <section class="map-card glass-panel">
+        <div class="map-card-header">
+          <h2><i class="fa-solid fa-map"></i> Localisation</h2>
+          <button class="btn-link" type="button" (click)="openInMaps()">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> Google Maps
+          </button>
+        </div>
+        <div #miniMapContainer class="mini-map"></div>
+      </section>
+    </div>
+
+    <!-- Actions -->
+    <section class="actions-bar glass-panel">
+      <button class="action-btn primary" type="button" (click)="reserveParking()" [disabled]="!isOpen || p.availableSpots === 0">
+        <i class="fa-solid fa-calendar-check"></i>
+        Réserver une place
+      </button>
+      <button class="action-btn secondary" type="button" (click)="openSimulator()">
+        <i class="fa-solid fa-gamepad"></i>
+        Simulation live
+      </button>
+      <button class="action-btn ghost" type="button" (click)="goBack()">
+        <i class="fa-solid fa-map-location-dot"></i>
+        Retour carte
+      </button>
+    </section>
+  </div>
+</div>

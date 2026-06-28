@@ -1,0 +1,15 @@
+<div class="app-logo" [class]="'app-logo--' + size" [class.app-logo--mark-only]="variant === 'mark'">
+  <img
+    class="app-logo__mark"
+    src="assets/brand/logo-mark.svg"
+    alt="Apex"
+    width="64"
+    height="64"
+    decoding="async"
+  />
+
+  <div class="app-logo__text" *ngIf="variant === 'full'">
+    <span class="app-logo__title text-gradient-primary">Apex</span>
+    <span class="app-logo__tagline" *ngIf="showTagline">Au sommet du parking intelligent</span>
+  </div>
+</div>

@@ -1,0 +1,177 @@
+<div class="parking-map-container">
+  <!-- Barre supérieure -->
+  <header class="map-toolbar glass-panel">
+    <div class="toolbar-left">
+      <div class="toolbar-title">
+        <span class="title-icon"><i class="fa-solid fa-map-location-dot"></i></span>
+        <div>
+          <h1>Carte des parkings</h1>
+          <p class="toolbar-subtitle">Tunisie · Temps réel</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="toolbar-stats">
+      <div class="stat-chip">
+        <i class="fa-solid fa-square-parking"></i>
+        <span class="stat-value">{{ parkings.length }}</span>
+        <span class="stat-label">Parkings</span>
+      </div>
+      <div class="stat-chip accent">
+        <i class="fa-solid fa-circle-check"></i>
+        <span class="stat-value">{{ getTotalAvailableSpots() }}</span>
+        <span class="stat-label">Places libres</span>
+      </div>
+    </div>
+
+    <div class="toolbar-actions">
+      <button (click)="findNearbyParkings()" class="tool-btn primary" [class.active]="hasUserLocation">
+        <i class="fa-solid fa-location-crosshairs"></i>
+        <span>À proximité</span>
+      </button>
+      <button (click)="centerOnUserLocation()" class="tool-btn" [class.active]="hasUserLocation">
+        <i class="fa-solid fa-crosshairs"></i>
+        <span>Ma position</span>
+      </button>
+      <button (click)="refreshMap()" class="tool-btn icon-only" title="Actualiser">
+        <i class="fa-solid fa-arrows-rotate" [class.spinning]="isLoading"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Alertes -->
+  <div *ngIf="isLoading" class="map-alert loading glass-panel">
+    <div class="spinner"></div>
+    <span>Chargement des parkings...</span>
+  </div>
+
+  <div *ngIf="errorMessage" class="map-alert error glass-panel">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    <span>{{ errorMessage }}</span>
+    <button (click)="loadParkings()">Réessayer</button>
+  </div>
+
+  <div *ngIf="locationError" class="map-alert warning glass-panel">
+    <i class="fa-solid fa-location-dot"></i>
+    <span>{{ locationError }}</span>
+    <button (click)="centerOnUserLocation()">Activer</button>
+  </div>
+
+  <div *ngIf="locationWarning && !locationError" class="map-alert warning glass-panel">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <span>{{ locationWarning }}</span>
+  </div>
+
+  <!-- Zone carte -->
+  <div class="main-content">
+    <div class="map-wrapper">
+      <div #mapContainer class="map-container"></div>
+
+      <!-- Légende flottante -->
+      <div class="legend">
+        <span class="legend-title">Disponibilité</span>
+        <div class="legend-items">
+          <div class="legend-item"><span class="dot green"></span> Disponible</div>
+          <div class="legend-item"><span class="dot orange"></span> Limité</div>
+          <div class="legend-item"><span class="dot red"></span> Complet</div>
+          <div class="legend-item"><span class="dot gray"></span> Fermé</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panneau latéral -->
+    <aside *ngIf="selectedParking as parking" class="sidebar glass-panel">
+      <div class="sidebar-header">
+        <div>
+          <span class="sidebar-city">{{ parking.city }}</span>
+          <h2>{{ parking.name }}</h2>
+        </div>
+        <button (click)="closeDetails()" class="close-btn" aria-label="Fermer">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="sidebar-content">
+        <div class="status-row">
+          <span class="status-badge" [style.background]="getAvailabilityColor(parking)">
+            {{ getAvailabilityText(parking) }}
+          </span>
+          <span class="rating-badge" *ngIf="parking.rating">
+            <i class="fa-solid fa-star"></i> {{ formatRating(parking.rating) }}
+          </span>
+        </div>
+
+        <!-- Jauge de disponibilité -->
+        <div class="availability-meter">
+          <div class="meter-header">
+            <span>Places disponibles</span>
+            <strong>{{ parking.availableSpots }} / {{ parking.totalSpots }}</strong>
+          </div>
+          <div class="meter-track">
+            <div
+              class="meter-fill"
+              [style.width.%]="getOccupancyPercent(parking)"
+              [style.background]="getAvailabilityColor(parking)">
+            </div>
+          </div>
+        </div>
+
+        <div class="info-cards">
+          <div class="info-card">
+            <i class="fa-solid fa-location-dot"></i>
+            <div>
+              <span class="label">Adresse</span>
+              <span class="value">{{ parking.address }}</span>
+            </div>
+          </div>
+          <div class="info-card">
+            <i class="fa-solid fa-coins"></i>
+            <div>
+              <span class="label">Tarif horaire</span>
+              <span class="value price">{{ formatPrice(parking.pricePerHour) }}</span>
+            </div>
+          </div>
+          <div class="info-card">
+            <i class="fa-solid fa-clock"></i>
+            <div>
+              <span class="label">Horaires</span>
+              <span class="value" *ngIf="parking.isOpen24h">Ouvert 24h/24</span>
+              <span class="value" *ngIf="!parking.isOpen24h">{{ parking.openingTime }} – {{ parking.closingTime }}</span>
+            </div>
+          </div>
+          <div class="info-card" *ngIf="parking.contactPhone">
+            <i class="fa-solid fa-phone"></i>
+            <div>
+              <span class="label">Contact</span>
+              <span class="value">{{ parking.contactPhone }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="features" *ngIf="parking.features?.length">
+          <span *ngFor="let feature of parking.features" class="feature-tag">{{ feature }}</span>
+        </div>
+
+        <div class="actions">
+          <button (click)="navigateToParkingDetails(parking.id)" class="action-btn primary">
+            <i class="fa-solid fa-circle-info"></i> Détails
+          </button>
+          <button (click)="openSimulator(parking.id)" class="action-btn secondary">
+            <i class="fa-solid fa-gamepad"></i> Simulation
+          </button>
+          <button (click)="centerOnParking(parking)" class="action-btn ghost">
+            <i class="fa-solid fa-crosshairs"></i> Centrer
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- État vide -->
+    <div *ngIf="!isLoading && !errorMessage && parkings.length === 0" class="empty-state glass-panel">
+      <i class="fa-solid fa-map"></i>
+      <h3>Aucun parking disponible</h3>
+      <p>Les parkings approuvés apparaîtront ici sur la carte.</p>
+      <button (click)="loadParkings()" class="tool-btn primary">Actualiser</button>
+    </div>
+  </div>
+</div>

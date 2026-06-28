@@ -1,0 +1,657 @@
+<div class="dashboard-container">
+  <h1><i class="fa-solid fa-user-circle"></i> Espace Client</h1>
+
+  <div class="section-tabs">
+    <button [class.active]="activeSection === 'parkings'" (click)="activeSection = 'parkings'; selectedParking = null; selectedParkingForBooking = null;">
+      <i class="fa-solid fa-square-parking"></i> Parkings & Abonnements
+    </button>
+    <button [class.active]="activeSection === 'subscriptions'" (click)="activeSection = 'subscriptions'; selectedParkingForBooking = null; clearSubscriptionParkingFilter();">
+      <i class="fa-solid fa-id-card"></i> Mes Abonnements ({{ getActiveSubscriptions().length }})
+    </button>
+    <button [class.active]="activeSection === 'reservations'" (click)="activeSection = 'reservations'; selectedParkingForBooking = null;">
+      <i class="fa-solid fa-list-check"></i> Mes Réservations ({{ myReservations.length }})
+      <span *ngIf="pendingReservationsCount > 0" class="tab-badge">{{ pendingReservationsCount }} à payer</span>
+    </button>
+    <button [class.active]="activeSection === 'complaints'" (click)="activeSection = 'complaints'; loadMyComplaints();">
+      <i class="fa-solid fa-triangle-exclamation"></i> Réclamations ({{ myComplaints.length }})
+    </button>
+    <button [class.active]="activeSection === 'profile'" (click)="activeSection = 'profile'; selectedParkingForBooking = null;">
+      <i class="fa-solid fa-user-cog"></i> Mon Profil
+    </button>
+  </div>
+
+  <!-- Alerte paiement en attente (visible sur tous les onglets) -->
+  <div *ngIf="pendingReservationsCount > 0 && !selectedResForConfirm" class="payment-alert glass-card">
+    <div>
+      <strong><i class="fa-solid fa-credit-card"></i> Paiement requis</strong>
+      <p>{{ pendingReservationsCount }} réservation(s) en attente — confirmez le paiement dans les 15 minutes.</p>
+    </div>
+    <button class="btn btn-primary" type="button" (click)="openConfirmModal(getPendingReservations()[0])">
+      Payer maintenant
+    </button>
+  </div>
+
+  <!-- Parkings & Subscription Booking Tab -->
+  <div *ngIf="activeSection === 'parkings'" style="margin-top: 1.5rem;">
+    
+    <!-- Direct Parking Booking Form (Overlay card) -->
+    <div *ngIf="selectedParkingForBooking" class="glass-card" style="margin-bottom: 2rem; border-color: var(--primary);">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+        <h3>Réserver une place dans : {{ selectedParkingForBooking.name }}</h3>
+        <button class="btn btn-secondary" style="width: auto; padding: 0.35rem 0.75rem; font-size: 0.85rem;" (click)="selectedParkingForBooking = null">Fermer</button>
+      </div>
+
+      <form (submit)="onSubmitBooking($event)">
+        <div class="grid-3">
+          <div class="form-group">
+            <label>Choisir la place</label>
+            <select class="form-control" [(ngModel)]="bookingSpotId" name="spotId" required>
+              <option value="" disabled selected>Sélectionnez une place libre...</option>
+              <option *ngFor="let s of bookingSpots" [value]="s._id">Place {{ s.spotNumber }} ({{ s.type }})</option>
+            </select>
+            <span *ngIf="bookingSpots.length === 0" style="font-size: 0.75rem; color: var(--danger);">Aucune place libre disponible.</span>
+          </div>
+
+          <div class="form-group">
+            <label>Plaque d'immatriculation</label>
+            <input type="text" class="form-control" [(ngModel)]="bookingVehiclePlate" name="vehiclePlate" placeholder="ex: AA123BB" required>
+          </div>
+
+          <div class="form-group">
+            <label>Type de véhicule</label>
+            <select class="form-control" [(ngModel)]="bookingVehicleType" name="vehicleType">
+              <option value="car">Voiture standard</option>
+              <option value="motorcycle">Moto</option>
+              <option value="electric">Véhicule Électrique</option>
+              <option value="handicap">Place PMR</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div class="form-group">
+            <label>Heure de début</label>
+            <input type="datetime-local" class="form-control" [(ngModel)]="bookingStartTime" name="startTime" required>
+          </div>
+
+          <div class="form-group">
+            <label>Heure de fin</label>
+            <input type="datetime-local" class="form-control" [(ngModel)]="bookingEndTime" name="endTime" required>
+          </div>
+        </div>
+
+        <p class="booking-hint">
+          <i class="fa-solid fa-credit-card"></i>
+          Paiement sécurisé par <strong>carte bancaire</strong> via <strong>Konnect</strong> (passerelle tunisienne).
+        </p>
+
+        <div class="form-group">
+          <label>Notes complémentaires (optionnel)</label>
+          <textarea class="form-control" [(ngModel)]="bookingNotes" name="notes" rows="2" placeholder="Instructions particulières pour le stationnement..."></textarea>
+        </div>
+
+        <button class="btn btn-primary" type="submit" [disabled]="isBooking || bookingSpots.length === 0" style="width: auto;">
+          <i class="fa-solid fa-calendar-plus"></i> Réserver puis payer
+        </button>
+      </form>
+    </div>
+
+    <!-- Default Parking Grid -->
+    <div *ngIf="!selectedParking && !selectedParkingForBooking">
+      <h3 style="margin-bottom: 1.5rem;"><i class="fa-solid fa-search" style="color: var(--primary); margin-right: 0.5rem;"></i> Sélectionnez une action sur un parking</h3>
+      <div class="grid-3" *ngIf="parkings.length > 0">
+        <div class="glass-card" *ngFor="let p of parkings" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+              <h4 style="color: var(--primary); font-size: 1.2rem;">{{ p.name }}</h4>
+              <span class="badge badge-approved" *ngIf="hasActiveSubscriptionForParking(p.id || p._id)">Abonné</span>
+              <span class="badge badge-pending" *ngIf="!hasActiveSubscriptionForParking(p.id || p._id)">Ouvert</span>
+            </div>
+            <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
+              <i class="fa-solid fa-location-dot" style="margin-right: 0.25rem;"></i> {{ p.address }}, {{ p.city }}
+            </p>
+            <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">
+              <i class="fa-solid fa-circle-info" style="margin-right: 0.25rem;"></i> Places libres: <strong>{{ p.availableSpots }} / {{ p.totalSpots }}</strong>
+            </p>
+            <div style="background: rgba(255,255,255,0.03); padding: 0.75rem; border-radius: var(--border-radius-sm); border: 1px solid var(--glass-border); margin-bottom: 1.5rem;">
+              <span style="font-size: 0.8rem; color: var(--text-muted);">Tarif Horaire :</span>
+              <strong style="font-size: 1.1rem; color: var(--accent); margin-left: 0.5rem;">{{ p.pricePerHour }} DT/h</strong>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <button class="btn btn-primary" (click)="startBooking(p)" [disabled]="p.availableSpots === 0">
+              <i class="fa-solid fa-calendar-plus"></i> Réserver une place
+            </button>
+            <button class="btn btn-secondary" (click)="openSubscriptionsForParking(p)">
+              <i class="fa-solid fa-ticket"></i> Souscrire un abonnement
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="empty-state glass-card" *ngIf="parkings.length === 0" style="text-align: center; padding: 4rem 0;">
+        <i class="fa-solid fa-square-parking" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+        <p>Aucun parking n'est actuellement disponible.</p>
+      </div>
+    </div>
+
+    <!-- Parking Selected: Plans list -->
+    <div *ngIf="selectedParking" class="glass-card" style="margin-top: 1rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 1.5rem; margin-bottom: 2rem;">
+        <div>
+          <button class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.9rem; margin-bottom: 0.5rem;" (click)="selectedParking = null">
+            <i class="fa-solid fa-arrow-left"></i> Retour aux parkings
+          </button>
+          <h2>Forfaits disponibles pour: {{ selectedParking.name }}</h2>
+          <p style="color: var(--text-secondary); font-size: 0.95rem; margin-top: 0.25rem;">
+            <i class="fa-solid fa-location-dot"></i> {{ selectedParking.address }}, {{ selectedParking.city }}
+          </p>
+        </div>
+        <div style="text-align: right;">
+          <span style="font-size: 0.85rem; color: var(--text-muted);">Tarif normal: </span>
+          <span style="font-size: 1.2rem; color: var(--accent); font-weight: bold;">{{ selectedParking.pricePerHour }} DT/h</span>
+        </div>
+      </div>
+
+      <!-- Plans list -->
+      <div class="grid-3" *ngIf="plans.length > 0">
+        <div class="glass-card" *ngFor="let plan of plans" style="background: rgba(255, 255, 255, 0.02); display: flex; flex-direction: column; justify-content: space-between; height: 100%; border-color: var(--primary);">
+          <div>
+            <h3 style="color: var(--primary); margin-bottom: 0.5rem; font-size: 1.3rem;">{{ plan.name }}</h3>
+            <div style="font-size: 2.2rem; font-weight: 800; color: #fff; margin-bottom: 1rem; font-family: 'Outfit', sans-serif;">
+              {{ plan.price }} DT <span style="font-size: 1rem; color: var(--text-secondary); font-weight: normal;">/ {{ plan.durationDays }} jours</span>
+            </div>
+            <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1.5rem; line-height: 1.4;">
+              {{ plan.description || 'Profitez d\'un accès illimité et préférentiel dans ce parking.' }}
+            </p>
+            <ul style="list-style: none; margin-bottom: 2rem;">
+              <li *ngFor="let f of plan.features" style="font-size: 0.85rem; color: var(--text-primary); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fa-solid fa-circle-check" style="color: var(--accent);"></i> {{ f }}
+              </li>
+              <li *ngIf="!plan.features || plan.features.length === 0" style="font-size: 0.85rem; color: var(--text-muted); font-style: italic;">
+                Accès prioritaire illimité inclus
+              </li>
+            </ul>
+          </div>
+          <button class="btn btn-primary" (click)="buySubscription(plan)" [disabled]="isBuyingSubscription || isConfirmingSubscription">
+            <i class="fa-solid fa-credit-card"></i> Souscrire — payer par carte
+          </button>
+        </div>
+      </div>
+
+      <div class="empty-state" *ngIf="plans.length === 0" style="text-align: center; padding: 4rem 0;">
+        <i class="fa-solid fa-ticket" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+        <p>Aucun forfait d'abonnement n'a été créé pour ce parking par son entreprise.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Subscriptions Tab -->
+  <div *ngIf="activeSection === 'subscriptions'" class="subscriptions-section">
+    <div class="subscriptions-header glass-card">
+      <div>
+        <h2><i class="fa-solid fa-id-card"></i> Mes abonnements parking</h2>
+        <p>Souscrivez à un forfait mensuel ou hebdomadaire et payez par carte bancaire (Konnect).</p>
+      </div>
+      <div class="subscription-kpi">
+        <strong>{{ getActiveSubscriptions().length }}</strong>
+        <span>actif(s)</span>
+      </div>
+    </div>
+
+    <!-- Browse plans by parking -->
+    <div class="glass-card subscription-browse" *ngIf="!subscriptionParkingFilter">
+      <h3><i class="fa-solid fa-ticket"></i> Choisir un parking pour voir les forfaits</h3>
+      <div class="grid-3" *ngIf="parkings.length > 0">
+        <button type="button" class="subscription-parking-card" *ngFor="let p of parkings" (click)="openSubscriptionsForParking(p)">
+          <strong>{{ p.name }}</strong>
+          <span>{{ p.city }} · {{ p.pricePerHour }} DT/h</span>
+          <span class="badge badge-approved" *ngIf="hasActiveSubscriptionForParking(p.id || p._id)">Déjà abonné</span>
+          <span class="badge badge-pending" *ngIf="!hasActiveSubscriptionForParking(p.id || p._id)">Voir forfaits</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Plans for selected parking -->
+    <div class="glass-card" *ngIf="subscriptionParkingFilter">
+      <div class="subscription-plans-header">
+        <div>
+          <button type="button" class="btn btn-secondary btn-back" (click)="clearSubscriptionParkingFilter()">
+            <i class="fa-solid fa-arrow-left"></i> Tous les parkings
+          </button>
+          <h3>Forfaits — {{ subscriptionParkingFilter.name }}</h3>
+          <p class="profile-intro">{{ subscriptionParkingFilter.address }}, {{ subscriptionParkingFilter.city }}</p>
+        </div>
+      </div>
+
+      <div class="grid-3" *ngIf="plans.length > 0">
+        <div class="glass-card plan-card" *ngFor="let plan of plans">
+          <h4>{{ plan.name }}</h4>
+          <div class="plan-price">{{ plan.price }} DT <small>/ {{ plan.durationDays }} jours</small></div>
+          <p>{{ plan.description || 'Accès prioritaire au parking.' }}</p>
+          <ul class="plan-features">
+            <li *ngFor="let f of plan.features"><i class="fa-solid fa-circle-check"></i> {{ f }}</li>
+          </ul>
+          <button class="btn btn-primary" (click)="buySubscription(plan)" [disabled]="isBuyingSubscription || isConfirmingSubscription">
+            <i class="fa-solid fa-credit-card"></i> Souscrire
+          </button>
+        </div>
+      </div>
+
+      <div class="empty-state" *ngIf="plans.length === 0 && !isLoading">
+        <i class="fa-solid fa-ticket"></i>
+        <p>Aucun forfait disponible pour ce parking.</p>
+      </div>
+    </div>
+
+    <!-- Active & history -->
+    <h3 class="subscriptions-history-title"><i class="fa-solid fa-clock-rotate-left"></i> Historique de vos abonnements</h3>
+
+    <div class="subscription-cards" *ngIf="mySubscriptions.length > 0">
+      <div class="glass-card subscription-card" *ngFor="let sub of mySubscriptions" [class.active-sub]="sub.status === 'active'">
+        <div class="subscription-card-top">
+          <div>
+            <strong>{{ sub.parkingId?.name || 'Parking' }}</strong>
+            <span>{{ sub.planId?.name || 'Forfait' }}</span>
+          </div>
+          <span class="badge" [ngClass]="{
+            'badge-approved': sub.status === 'active',
+            'badge-pending': sub.status === 'pending',
+            'badge-suspended': sub.status === 'expired',
+            'badge-rejected': sub.status === 'cancelled'
+          }">{{ getSubscriptionStatusLabel(sub.status) }}</span>
+        </div>
+        <div class="subscription-card-body">
+          <div><span>Validité</span><strong *ngIf="sub.status === 'active'">Du {{ sub.startDate | date:'dd/MM/yyyy' }} au {{ sub.endDate | date:'dd/MM/yyyy' }}</strong><strong *ngIf="sub.status !== 'active'">—</strong></div>
+          <div><span>Montant</span><strong>{{ sub.pricePaid }} DT</strong></div>
+          <div><span>Transaction</span><strong class="mono">{{ sub.transactionId }}</strong></div>
+        </div>
+        <button
+          *ngIf="sub.status === 'pending'"
+          class="btn btn-primary"
+          type="button"
+          style="width: 100%; margin-top: 0.85rem;"
+          (click)="openSubscriptionPaymentModal(sub)">
+          <i class="fa-solid fa-credit-card"></i> Payer avec Konnect
+        </button>
+      </div>
+    </div>
+
+    <div class="empty-state glass-card" *ngIf="mySubscriptions.length === 0">
+      <i class="fa-solid fa-credit-card"></i>
+      <p>Vous n'avez souscrit à aucun abonnement pour le moment.</p>
+      <button class="btn btn-primary" type="button" style="width: auto; margin-top: 1rem;" (click)="clearSubscriptionParkingFilter()" *ngIf="parkings.length > 0">
+        Découvrir les forfaits
+      </button>
+    </div>
+  </div>
+
+  <!-- Client Reservations Tab -->
+  <div *ngIf="activeSection === 'reservations'" style="margin-top: 1.5rem;">
+    <h3 style="margin-bottom: 1.5rem;"><i class="fa-solid fa-list-check" style="color: var(--primary); margin-right: 0.5rem;"></i> Vos réservations</h3>
+
+    <!-- Review modal overlay -->
+    <div *ngIf="selectedResForReview" class="glass-card" style="margin-bottom: 2rem; border-color: var(--secondary);">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+        <h3>Laisser un avis pour la place {{ selectedResForReview.spotNumber }} ({{ selectedResForReview.parkingId?.name }})</h3>
+        <button class="btn btn-secondary" style="width: auto; padding: 0.35rem 0.75rem; font-size: 0.85rem;" (click)="selectedResForReview = null">Fermer</button>
+      </div>
+      <form (submit)="onSubmitReview()">
+        <div class="form-group" style="max-width: 250px;">
+          <label>Note (1 à 5 étoiles)</label>
+          <select class="form-control" [(ngModel)]="reviewRating" name="rating">
+            <option [value]="5">⭐⭐⭐⭐⭐ (Excellent)</option>
+            <option [value]="4">⭐⭐⭐⭐ (Très bon)</option>
+            <option [value]="3">⭐⭐⭐ (Moyen)</option>
+            <option [value]="2">⭐⭐ (Médiocre)</option>
+            <option [value]="1">⭐ (Mauvais)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Votre commentaire</label>
+          <textarea class="form-control" rows="3" [(ngModel)]="reviewComment" name="comment" placeholder="Donnez votre feedback sur l'état de la place, l'accès au parking..."></textarea>
+        </div>
+        <button class="btn btn-primary" type="submit" [disabled]="isLoading" style="width: auto;">
+          <i class="fa-solid fa-comment-dots"></i> Envoyer mon avis
+        </button>
+      </form>
+    </div>
+
+    <!-- Table lists -->
+    <div class="custom-table-container" *ngIf="myReservations.length > 0">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Parking</th>
+            <th>Place</th>
+            <th>Véhicule</th>
+            <th>Créneau</th>
+            <th>Prix / Paiement</th>
+            <th>Code QR</th>
+            <th>Statut</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of myReservations">
+            <td>
+              <strong>{{ r.parkingId?.name || 'Parking Supprimé' }}</strong>
+              <div style="font-size: 0.8rem; color: var(--text-secondary);">{{ r.parkingId?.address }}, {{ r.parkingId?.city }}</div>
+            </td>
+            <td>Place <strong style="color: var(--primary);">{{ r.spotNumber }}</strong></td>
+            <td>
+              <span style="font-family: monospace; font-size: 0.85rem; background: rgba(255,255,255,0.05); padding: 0.15rem 0.35rem; border-radius: 4px;">{{ r.vehiclePlate }}</span>
+              <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">{{ r.vehicleType }}</div>
+            </td>
+            <td>
+              <span style="display: block; font-size: 0.85rem;">Du {{ r.startTime | date:'dd/MM/yyyy HH:mm' }}</span>
+              <span style="display: block; font-size: 0.85rem; color: var(--text-secondary);">Au {{ r.endTime | date:'dd/MM/yyyy HH:mm' }}</span>
+            </td>
+            <td>
+              <strong>{{ r.totalPrice }} DT</strong>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">
+                {{ r.paymentMethod ? getPaymentMethodLabel(r.paymentMethod) : 'Paiement à la confirmation' }}
+                <span *ngIf="r.paymentStatus"> ({{ r.paymentStatus }})</span>
+              </div>
+            </td>
+            <td style="font-family: monospace; font-size: 0.9rem; font-weight: bold; color: var(--accent);">
+              {{ r.qrCode }}
+            </td>
+            <td>
+              <span class="badge" [ngClass]="{
+                'badge-pending': r.status === 'pending',
+                'badge-approved': r.status === 'confirmed' || r.status === 'active' || r.status === 'completed',
+                'badge-rejected': r.status === 'cancelled',
+                'badge-suspended': r.status === 'expired' || r.status === 'no_show'
+              }">
+                {{ r.status === 'pending' ? 'En attente' : (r.status === 'confirmed' ? 'Confirmé' : (r.status === 'active' ? 'En cours' : (r.status === 'completed' ? 'Terminé' : (r.status === 'cancelled' ? 'Annulé' : (r.status === 'expired' ? 'Expiré' : r.status))))) }}
+              </span>
+              <div *ngIf="r.status === 'pending' && r.autoConfirmExpiry" class="expiry-countdown">
+                <i class="fa-solid fa-clock"></i> {{ getRemainingTimeLabel(r) }}
+              </div>
+            </td>
+            <td>
+              <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                <button *ngIf="r.status === 'pending' && !isReservationExpired(r)" class="btn btn-primary" style="padding: 0.35rem 0.65rem; font-size: 0.75rem;" (click)="openConfirmModal(r)" [disabled]="isConfirming">
+                  Confirmer & payer
+                </button>
+                <!-- If pending or confirmed -> Cancel button -->
+                <button *ngIf="r.status === 'pending' || r.status === 'confirmed'" class="btn btn-secondary" style="padding: 0.35rem 0.65rem; font-size: 0.75rem; color: var(--danger); border-color: rgba(239, 68, 68, 0.2);" (click)="cancelReservation(r._id)" [disabled]="isLoading || isConfirming">
+                  Annuler
+                </button>
+                <!-- If completed and no rating -> Review button -->
+                <button *ngIf="r.status === 'completed' && !r.rating" class="btn btn-secondary" style="padding: 0.35rem 0.65rem; font-size: 0.75rem; border-color: var(--secondary); color: var(--secondary);" (click)="openReviewModal(r)">
+                  Laisser un avis
+                </button>
+                <span *ngIf="r.status === 'completed' && r.rating" style="font-size: 0.8rem; color: var(--warning);">Note: {{ r.rating }}/5 ★</span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="empty-state glass-card" *ngIf="myReservations.length === 0" style="text-align: center; padding: 4rem 0;">
+      <i class="fa-solid fa-calendar-xmark" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+      <p>Vous n'avez effectué aucune réservation pour le moment.</p>
+    </div>
+  </div>
+
+  <!-- Réclamations -->
+  <div *ngIf="activeSection === 'complaints'" class="complaints-section" style="margin-top: 1.5rem;">
+    <div class="grid-2">
+      <div class="glass-card">
+        <h3><i class="fa-solid fa-pen-to-square"></i> Déposer une réclamation</h3>
+        <p class="profile-intro">Signalez un problème lié à un parking, une réservation ou un paiement.</p>
+        <form (submit)="submitComplaint($event)">
+          <div class="form-group">
+            <label>Parking concerné *</label>
+            <select class="form-control" [(ngModel)]="complaintParkingId" name="complaintParkingId" required>
+              <option value="">— Choisir un parking —</option>
+              <option *ngFor="let p of parkings" [value]="p.id || p._id">{{ p.name }} — {{ p.city }}</option>
+            </select>
+          </div>
+          <div class="form-group" *ngIf="complaintParkingId">
+            <label>Réservation liée (optionnel)</label>
+            <select class="form-control" [(ngModel)]="complaintReservationId" name="complaintReservationId">
+              <option value="">— Aucune —</option>
+              <option *ngFor="let r of getComplaintReservationsForParking()" [value]="r._id || r.id">
+                Place {{ r.spotNumber }} — {{ r.status }} — {{ r.startTime | date:'dd/MM/yyyy' }}
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Catégorie</label>
+            <select class="form-control" [(ngModel)]="complaintCategory" name="complaintCategory">
+              <option value="parking">Parking</option>
+              <option value="reservation">Réservation</option>
+              <option value="payment">Paiement</option>
+              <option value="subscription">Abonnement</option>
+              <option value="access">Accès / QR</option>
+              <option value="staff">Personnel</option>
+              <option value="other">Autre</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Priorité</label>
+            <select class="form-control" [(ngModel)]="complaintPriority" name="complaintPriority">
+              <option value="low">Basse</option>
+              <option value="medium">Moyenne</option>
+              <option value="high">Haute</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Sujet *</label>
+            <input type="text" class="form-control" [(ngModel)]="complaintSubject" name="complaintSubject" maxlength="120" required>
+          </div>
+          <div class="form-group">
+            <label>Description *</label>
+            <textarea class="form-control" rows="4" [(ngModel)]="complaintDescription" name="complaintDescription" maxlength="2000" required></textarea>
+          </div>
+          <button class="btn btn-primary" type="submit" [disabled]="complaintSubmitting">
+            <i class="fa-solid fa-paper-plane"></i> Envoyer la réclamation
+          </button>
+        </form>
+      </div>
+
+      <div class="glass-card">
+        <h3><i class="fa-solid fa-inbox"></i> Mes réclamations</h3>
+        <div *ngIf="myComplaints.length === 0" class="empty-state" style="padding: 2rem 0;">
+          <p>Aucune réclamation pour le moment.</p>
+        </div>
+        <div class="complaint-list" *ngIf="myComplaints.length > 0">
+          <div class="complaint-item" *ngFor="let c of myComplaints" (click)="openComplaintDetail(c)">
+            <div class="complaint-item-top">
+              <strong>{{ c.subject }}</strong>
+              <span class="badge" [ngClass]="{
+                'badge-pending': c.status === 'pending',
+                'badge-approved': c.status === 'resolved' || c.status === 'closed',
+                'badge-suspended': c.status === 'in_progress',
+                'badge-rejected': c.status === 'rejected' || c.status === 'escalated'
+              }">{{ getComplaintStatusLabel(c.status) }}</span>
+            </div>
+            <p>{{ c.parkingId?.name }} · {{ getComplaintCategoryLabel(c.category) }} · {{ c.createdAt | date:'dd/MM/yyyy HH:mm' }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="selectedComplaint" class="glass-card complaint-detail" style="margin-top: 1.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3>{{ selectedComplaint.subject }} <small class="mono">({{ selectedComplaint.reference }})</small></h3>
+        <button class="btn btn-secondary" type="button" (click)="closeComplaintDetail()">Fermer</button>
+      </div>
+      <p><strong>Statut :</strong> {{ getComplaintStatusLabel(selectedComplaint.status) }}</p>
+      <p><strong>Parking :</strong> {{ selectedComplaint.parkingId?.name }}</p>
+      <p><strong>Description :</strong> {{ selectedComplaint.description }}</p>
+      <p *ngIf="selectedComplaint.responseNote"><strong>Réponse :</strong> {{ selectedComplaint.responseNote }}</p>
+      <p *ngIf="selectedComplaint.resolutionNote"><strong>Résolution :</strong> {{ selectedComplaint.resolutionNote }}</p>
+      <p *ngIf="selectedComplaint.rejectReason"><strong>Motif de rejet :</strong> {{ selectedComplaint.rejectReason }}</p>
+      <div style="display: flex; gap: 0.75rem; margin-top: 1rem; flex-wrap: wrap;">
+        <button *ngIf="selectedComplaint.status === 'pending' || selectedComplaint.status === 'in_progress'"
+                class="btn btn-secondary" type="button" (click)="escalateMyComplaint(selectedComplaint)">
+          Escalader vers l'admin
+        </button>
+        <button *ngIf="selectedComplaint.status === 'resolved'" class="btn btn-primary" type="button" (click)="closeMyComplaint(selectedComplaint)">
+          Clôturer (satisfait)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Client Profile Edit Tab -->
+  <div *ngIf="activeSection === 'profile'" class="glass-card profile-card">
+    <h2><i class="fa-solid fa-user-pen"></i> Informations de votre Profil & Véhicule</h2>
+    <p class="profile-intro">Modifiez vos informations de compte et les détails de votre véhicule pour faciliter vos prochaines réservations.</p>
+
+    <div *ngIf="profileLoadError" class="profile-alert error">{{ profileLoadError }}</div>
+
+    <form (submit)="onUpdateProfile($event)" *ngIf="profile">
+      <h3 class="profile-section-title primary">Informations du compte</h3>
+      <div class="grid-3">
+        <div class="form-group">
+          <label>Nom complet *</label>
+          <input type="text" class="form-control" [(ngModel)]="profileName" name="pName" required>
+        </div>
+        <div class="form-group">
+          <label>Email *</label>
+          <input type="email" class="form-control" [(ngModel)]="profileEmail" name="pEmail" required>
+        </div>
+        <div class="form-group">
+          <label>Numéro de téléphone *</label>
+          <input type="tel" class="form-control" [(ngModel)]="profilePhone" name="pPhone" placeholder="ex: 22123456" required>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="form-group">
+          <label>Numéro CIN / Passeport</label>
+          <input type="text" class="form-control" [(ngModel)]="profileCin" name="pCin" placeholder="ex: 08XXXXXX">
+        </div>
+        <div class="form-group">
+          <label>Nouveau mot de passe</label>
+          <input type="password" class="form-control" [(ngModel)]="profilePassword" name="pPassword" placeholder="Laisser vide pour ne pas changer">
+        </div>
+        <div class="form-group">
+          <label>Confirmer le mot de passe</label>
+          <input type="password" class="form-control" [(ngModel)]="profilePasswordConfirm" name="pPasswordConfirm" placeholder="Répéter le mot de passe">
+        </div>
+      </div>
+
+      <h3 class="profile-section-title secondary">Détails du véhicule par défaut</h3>
+      <div class="grid-3">
+        <div class="form-group">
+          <label>Plaque d'immatriculation</label>
+          <input type="text" class="form-control" [(ngModel)]="profilePlate" name="pPlate" placeholder="ex: AA123BB">
+        </div>
+        <div class="form-group">
+          <label>Numéro de série (châssis)</label>
+          <input type="text" class="form-control" [(ngModel)]="profileSerial" name="pSerial" placeholder="ex: VF3XXXXXXXXXX">
+        </div>
+        <div class="form-group">
+          <label>Type de véhicule</label>
+          <select class="form-control" [(ngModel)]="profileVehicleType" name="pVehicleType">
+            <option value="car">Voiture</option>
+            <option value="motorcycle">Moto</option>
+            <option value="electric">Électrique</option>
+            <option value="handicap">PMR (Handicapé)</option>
+          </select>
+        </div>
+      </div>
+
+      <h3 class="profile-section-title accent">Préférences & notifications</h3>
+      <div class="grid-3">
+        <div class="form-group">
+          <label>Moyen de paiement</label>
+          <p class="form-control" style="background: rgba(99,102,241,0.08); border-color: rgba(99,102,241,0.25);">
+            Carte bancaire (Konnect)
+          </p>
+        </div>
+        <div class="form-group profile-checkbox">
+          <input type="checkbox" id="pEmailNotif" [(ngModel)]="profileEmailNotifications" name="pEmailNotif">
+          <label for="pEmailNotif">Notifier par email</label>
+        </div>
+        <div class="form-group profile-checkbox">
+          <input type="checkbox" id="pSmsNotif" [(ngModel)]="profileSmsNotifications" name="pSmsNotif">
+          <label for="pSmsNotif">Notifier par SMS</label>
+        </div>
+      </div>
+
+      <div class="profile-actions">
+        <button class="btn btn-primary" type="submit" [disabled]="isLoading || profileSaving">
+          <i class="fa-solid fa-save"></i> Enregistrer les modifications
+        </button>
+        <button class="btn btn-secondary" type="button" (click)="resetProfileForm()" [disabled]="isLoading || profileSaving">
+          <i class="fa-solid fa-rotate-left"></i> Annuler
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal paiement abonnement (Konnect) -->
+<div *ngIf="selectedPlanForPayment || selectedSubscriptionForPayment" class="payment-overlay">
+  <div class="payment-modal glass-card">
+    <div class="confirm-header">
+      <h3><i class="fa-solid fa-credit-card"></i> Paiement de l'abonnement</h3>
+      <button class="btn btn-secondary confirm-close" type="button" (click)="closeSubscriptionPaymentModal()">×</button>
+    </div>
+
+    <div class="confirm-summary" *ngIf="getSubscriptionPaymentPlan()">
+      <p><strong>{{ getSubscriptionPaymentParking()?.name }}</strong> — {{ getSubscriptionPaymentPlan()?.name }}</p>
+      <p>{{ getSubscriptionPaymentPlan()?.durationDays }} jours · <strong style="color: var(--accent);">{{ getSubscriptionPaymentPrice() }} DT</strong></p>
+      <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.75rem;">
+        <i class="fa-solid fa-shield-halved"></i>
+        Paiement sécurisé par carte bancaire via <strong>Konnect</strong> (passerelle agréée en Tunisie).
+      </p>
+    </div>
+
+    <button
+      class="btn btn-primary payment-submit"
+      type="button"
+      (click)="onSubmitSubscriptionPayment()"
+      [disabled]="isBuyingSubscription || isConfirmingSubscription">
+      <i class="fa-solid fa-lock"></i>
+      {{ (isBuyingSubscription || isConfirmingSubscription) ? 'Redirection vers Konnect...' : ('Payer par carte — ' + getSubscriptionPaymentPrice() + ' DT') }}
+    </button>
+  </div>
+</div>
+
+<!-- Modal paiement réservation (overlay global) -->
+<div *ngIf="selectedResForConfirm" class="payment-overlay">
+  <div class="payment-modal glass-card">
+    <div class="confirm-header">
+      <h3><i class="fa-solid fa-credit-card"></i> Paiement de la réservation</h3>
+      <button class="btn btn-secondary confirm-close" type="button" (click)="closeConfirmModal()">×</button>
+    </div>
+
+    <div class="confirm-summary">
+      <p><strong>{{ selectedResForConfirm.parkingId?.name }}</strong> — Place {{ selectedResForConfirm.spotNumber }}</p>
+      <p>{{ selectedResForConfirm.vehiclePlate }} · <strong style="color: var(--accent);">{{ selectedResForConfirm.totalPrice }} DT</strong></p>
+      <p class="confirm-expiry" [class.expired]="isReservationExpired(selectedResForConfirm)">
+        <i class="fa-solid fa-hourglass-half"></i>
+        Temps restant : {{ getRemainingTimeLabel(selectedResForConfirm) || '15 min' }}
+      </p>
+      <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.75rem;">
+        <i class="fa-solid fa-shield-halved"></i>
+        Paiement sécurisé par carte bancaire via <strong>Konnect</strong> (passerelle agréée en Tunisie).
+      </p>
+    </div>
+
+    <button
+      class="btn btn-primary payment-submit"
+      type="button"
+      (click)="onSubmitConfirm()"
+      [disabled]="isConfirming || isReservationExpired(selectedResForConfirm)">
+      <i class="fa-solid fa-lock"></i>
+      {{ isConfirming ? 'Redirection vers Konnect...' : ('Payer par carte — ' + selectedResForConfirm.totalPrice + ' DT') }}
+    </button>
+  </div>
+</div>
+
+<!-- Toast notifications -->
+<div class="toast-container" *ngIf="toastMessage">
+  <div class="toast" [ngClass]="'toast-' + toastType">
+    <i class="fa-solid" [ngClass]="toastType === 'success' ? 'fa-circle-check' : 'fa-circle-xmark'"></i>
+    <span>{{ toastMessage }}</span>
+  </div>
+</div>

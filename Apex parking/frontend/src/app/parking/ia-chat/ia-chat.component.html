@@ -1,0 +1,116 @@
+<!-- Bouton flottant -->
+<div class="ia-chat-button" (click)="toggleChat()" *ngIf="!isOpen">
+  <span class="chat-icon">🤖</span>
+  <span class="chat-badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
+</div>
+
+<!-- Fenêtre de chat -->
+<div class="ia-chat-window" *ngIf="isOpen" [class.minimized]="isMinimized">
+  <!-- En-tête -->
+  <div class="chat-header">
+    <div class="header-left">
+      <span class="header-icon">🤖</span>
+      <div class="header-info">
+        <h3>Assistant Parking</h3>
+        <span class="status-badge">{{ iaOnline ? '🟢 En ligne' : '🔴 Hors ligne' }}</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button (click)="toggleMinimize()" class="header-btn" title="Minimiser">
+        {{ isMinimized ? '⬆' : '⬇' }}
+      </button>
+      <button (click)="toggleChat()" class="header-btn" title="Fermer">✕</button>
+    </div>
+  </div>
+
+  <!-- Corps du chat -->
+  <div class="chat-body" *ngIf="!isMinimized">
+    <div class="messages-container" #chatContainer>
+      <div *ngFor="let message of messages" 
+           class="message-wrapper"
+           [class.user]="message.type === 'user'"
+           [class.bot]="message.type === 'bot'">
+        
+        <!-- Message utilisateur -->
+        <div *ngIf="message.type === 'user'" class="message user-message">
+          <div class="message-content">{{ message.text }}</div>
+          <div class="message-time">{{ message.timestamp | date:'HH:mm' }}</div>
+        </div>
+
+        <!-- Message bot -->
+        <div *ngIf="message.type === 'bot'" class="message bot-message">
+          <div class="bot-avatar">🤖</div>
+          <div class="message-content-wrapper">
+            <div class="message-content" [innerHTML]="formatText(message.text)" 
+                 [class.typing]="message.isTyping"></div>
+            
+            <!-- Suggestions -->
+            <div *ngIf="message.suggestions && message.suggestions.length > 0" class="suggestions">
+              <button *ngFor="let suggestion of message.suggestions" 
+                      (click)="sendSuggestion(suggestion)"
+                      class="suggestion-btn">
+                {{ suggestion }}
+              </button>
+            </div>
+
+            <!-- Données parking -->
+            <div *ngIf="hasParkingData(message.data)" class="parking-card">
+              <div class="parking-card-header">
+                <span class="parking-status" 
+                      [class.open]="message.data.bestParking.isOpen"
+                      [class.closed]="!message.data.bestParking.isOpen">
+                  {{ getStatusIcon(message.data.bestParking.isOpen) }} 
+                  {{ getStatusText(message.data.bestParking.isOpen) }}
+                </span>
+                <span class="parking-name">{{ message.data.bestParking.name }}</span>
+              </div>
+              <div class="parking-card-body">
+                <div class="info-row">
+                  <span>📍 Distance</span>
+                  <span>{{ message.data.bestParking.distanceKm }} km</span>
+                </div>
+                <div class="info-row">
+                  <span>🅿️ Places</span>
+                  <span>{{ message.data.bestParking.availableSpots }}/{{ message.data.bestParking.totalSpots }}</span>
+                </div>
+                <div class="info-row">
+                  <span>💰 Prix</span>
+                  <span>{{ formatPrice(message.data.bestParking.pricePerHour) }}/h</span>
+                </div>
+              </div>
+              <div class="parking-card-footer">
+                <button (click)="navigateToParking(message.data)" class="navigate-btn">
+                  🗺️ Y aller
+                </button>
+              </div>
+            </div>
+
+            <div class="message-time">{{ message.timestamp | date:'HH:mm' }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="chat-input-area">
+      <div class="quick-suggestions">
+        <button *ngFor="let suggestion of quickSuggestions" 
+                (click)="sendSuggestion(suggestion)"
+                class="quick-suggestion-btn">
+          {{ suggestion }}
+        </button>
+      </div>
+      <div class="input-wrapper">
+        <input #messageInput
+               type="text"
+               [(ngModel)]="userInput"
+               (keyup.enter)="sendMessage()"
+               placeholder="Posez votre question..."
+               [disabled]="isProcessing">
+        <button (click)="sendMessage()" [disabled]="isProcessing || !userInput.trim()">
+          {{ isProcessing ? '⏳' : '➤' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,509 @@
+<div class="dashboard-container employee-space">
+  <div class="employee-hero glass-card" *ngIf="profile">
+    <div class="employee-hero-left">
+      <div class="employee-avatar">{{ getProfileInitials() }}</div>
+      <div>
+        <span class="employee-role-badge"><i class="fa-solid fa-hard-hat"></i> {{ getPositionLabel() }}</span>
+        <h1>{{ profileName || profile.name }}</h1>
+        <p class="employee-subtitle">
+          <i class="fa-solid fa-square-parking"></i> {{ getParkingName() }}
+          <span *ngIf="getCompanyName() !== '—'"> · {{ getCompanyName() }}</span>
+        </p>
+      </div>
+    </div>
+    <div class="employee-hero-right" *ngIf="profile.shiftStart">
+      <span class="shift-label">Service du jour</span>
+      <strong>{{ profile.shiftStart }} – {{ profile.shiftEnd }}</strong>
+      <span class="badge badge-approved" *ngIf="profile.isOnDuty !== false">En service</span>
+    </div>
+  </div>
+
+  <!-- Section Tabs -->
+  <div class="section-tabs">
+    <button [class.active]="activeSection === 'dashboard'" (click)="activeSection = 'dashboard'">
+      <i class="fa-solid fa-chart-line"></i> Dashboard
+    </button>
+    <button [class.active]="activeSection === 'spots'" (click)="activeSection = 'spots'">
+      <i class="fa-solid fa-square-parking"></i> Gestion des Places ({{ stats.total }})
+    </button>
+    <button [class.active]="activeSection === 'scanner'" (click)="activeSection = 'scanner'">
+      <i class="fa-solid fa-qrcode"></i> Contrôle QR Code
+    </button>
+    <button [class.active]="activeSection === 'reservations'" (click)="activeSection = 'reservations'">
+      <i class="fa-solid fa-list-check"></i> Réservations
+    </button>
+    <button [class.active]="activeSection === 'complaints'" (click)="activeSection = 'complaints'; loadComplaints();">
+      <i class="fa-solid fa-triangle-exclamation"></i> Réclamations
+    </button>
+    <button [class.active]="activeSection === 'profile'" (click)="activeSection = 'profile'">
+      <i class="fa-solid fa-user-cog"></i> Mon Profil
+    </button>
+  </div>
+
+  <!-- Dashboard Section -->
+  <div *ngIf="activeSection === 'dashboard'" class="employee-dashboard">
+    <div class="employee-kpi-grid">
+      <div class="kpi-card glass-card">
+        <i class="fa-solid fa-square-parking"></i>
+        <div>
+          <strong>{{ stats.total }}</strong>
+          <span>Places totales</span>
+          <small>{{ stats.available }} disponibles</small>
+        </div>
+      </div>
+      <div class="kpi-card glass-card">
+        <i class="fa-solid fa-gauge-high"></i>
+        <div>
+          <strong>{{ getOccupancyRate() }}%</strong>
+          <span>Taux d'occupation</span>
+          <small>{{ stats.occupied + stats.reserved }} occupées</small>
+        </div>
+      </div>
+      <div class="kpi-card glass-card">
+        <i class="fa-solid fa-list-check"></i>
+        <div>
+          <strong>{{ reservations.length }}</strong>
+          <span>Réservations</span>
+          <small>{{ getActiveReservationsCount() }} actives</small>
+        </div>
+      </div>
+      <div class="kpi-card glass-card">
+        <i class="fa-solid fa-circle-check"></i>
+        <div>
+          <strong>{{ getCompletedReservationsCount() }}</strong>
+          <span>Terminées</span>
+          <small>{{ stats.maintenance }} en maintenance</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="employee-dashboard-panels grid-2">
+      <div class="glass-card dashboard-panel">
+        <h2><i class="fa-solid fa-circle-info"></i> Informations parking</h2>
+        <div *ngIf="parking" class="parking-info-list">
+          <p><strong>{{ parking.name }}</strong></p>
+          <p><i class="fa-solid fa-location-dot"></i> {{ parking.address }}, {{ parking.zipCode }} {{ parking.city }}</p>
+          <p><i class="fa-solid fa-clock"></i> {{ parking.isOpen24h ? 'Ouvert 24/7' : parking.openingTime + ' à ' + parking.closingTime }}</p>
+          <p><i class="fa-solid fa-coins"></i> {{ parking.pricePerHour }} DT/h</p>
+        </div>
+        <div *ngIf="!parking" class="empty-inline">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <p>Aucun parking ne vous est assigné actuellement.</p>
+        </div>
+      </div>
+
+      <div class="glass-card dashboard-panel">
+        <h2><i class="fa-solid fa-chart-pie"></i> Répartition des places</h2>
+        <div class="spot-stats-bars">
+          <div class="spot-stat-row">
+            <span>Disponibles</span><strong>{{ stats.available }}</strong>
+            <div class="stat-bar-track"><div class="stat-bar-fill available" [style.width.%]="stats.total ? (stats.available / stats.total) * 100 : 0"></div></div>
+          </div>
+          <div class="spot-stat-row">
+            <span>Occupées</span><strong>{{ stats.occupied }}</strong>
+            <div class="stat-bar-track"><div class="stat-bar-fill occupied" [style.width.%]="stats.total ? (stats.occupied / stats.total) * 100 : 0"></div></div>
+          </div>
+          <div class="spot-stat-row">
+            <span>Réservées</span><strong>{{ stats.reserved }}</strong>
+            <div class="stat-bar-track"><div class="stat-bar-fill reserved" [style.width.%]="stats.total ? (stats.reserved / stats.total) * 100 : 0"></div></div>
+          </div>
+          <div class="spot-stat-row">
+            <span>Maintenance</span><strong>{{ stats.maintenance }}</strong>
+            <div class="stat-bar-track"><div class="stat-bar-fill maintenance" [style.width.%]="stats.total ? (stats.maintenance / stats.total) * 100 : 0"></div></div>
+          </div>
+        </div>
+        <div class="dashboard-quick-actions">
+          <button class="btn btn-secondary" (click)="activeSection = 'spots'"><i class="fa-solid fa-eye"></i> Gérer les places</button>
+          <button class="btn btn-primary" (click)="activeSection = 'scanner'"><i class="fa-solid fa-qrcode"></i> Scanner QR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Spots Section -->
+  <div *ngIf="activeSection === 'spots'" class="glass-card" style="margin-top: 1.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 1.5rem; margin-bottom: 2rem;">
+      <div>
+        <h2>Gestion en direct des Places</h2>
+        <p style="color: var(--text-secondary); font-size: 0.95rem; margin-top: 0.25rem;">
+          Cliquez sur une place pour modifier son état (maintenance, libérer manuellement, etc.).
+        </p>
+      </div>
+      <div style="display: flex; gap: 0.5rem;">
+        <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: var(--accent); border: 1px solid rgba(16, 185, 129, 0.2);">Libre</span>
+        <span class="badge" style="background: rgba(168, 85, 247, 0.1); color: var(--secondary); border: 1px solid rgba(168, 85, 247, 0.2);">Occupé</span>
+        <span class="badge" style="background: rgba(245, 158, 11, 0.1); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.2);">Réservé</span>
+        <span class="badge" style="background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2);">Hors service</span>
+      </div>
+    </div>
+
+    <!-- Live spot grid -->
+    <div class="spots-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 1rem;" *ngIf="spots.length > 0">
+      <div *ngFor="let spot of spots" 
+           [class]="'spot-item spot-' + spot.status"
+           [class.selected]="selectedSpot && selectedSpot._id === spot._id"
+           (click)="selectSpot(spot)"
+           style="border: 1px solid var(--glass-border); border-radius: var(--border-radius-sm); padding: 1.25rem 0.75rem; text-align: center; cursor: pointer; transition: var(--transition-smooth); background: rgba(255,255,255,0.02);">
+        <i class="fa-solid" 
+           [ngClass]="spot.status === 'available' ? 'fa-circle-check' : (spot.status === 'occupied' ? 'fa-car' : (spot.status === 'reserved' ? 'fa-bookmark' : 'fa-triangle-exclamation'))"
+           style="font-size: 1.25rem; margin-bottom: 0.5rem; display: block;"></i>
+        <strong style="font-size: 1.05rem; display: block;">{{ spot.spotNumber }}</strong>
+        <span style="font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase;">{{ spot.type }}</span>
+      </div>
+    </div>
+
+    <!-- Spot edit form -->
+    <div *ngIf="selectedSpot" style="margin-top: 2rem; padding: 1.5rem; background: rgba(255, 255, 255, 0.02); border-radius: var(--border-radius-md); border: 1px solid var(--primary);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h3>Modifier l'état de la place {{ selectedSpot.spotNumber }}</h3>
+        <button class="btn btn-secondary" style="width: auto; padding: 0.35rem 0.75rem; font-size: 0.85rem;" (click)="selectedSpot = null">Fermer</button>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Nouveau Statut</label>
+          <select class="form-control" [(ngModel)]="selectedSpotNewStatus">
+            <option value="available">Disponible (Libre)</option>
+            <option value="occupied">Occupée (Véhicule garé)</option>
+            <option value="reserved">Réservée</option>
+            <option value="maintenance">Hors-Service (Maintenance / Blocage)</option>
+          </select>
+        </div>
+        <div style="display: flex; align-items: flex-end; margin-bottom: 1.5rem;">
+          <button class="btn btn-primary" (click)="onUpdateSpotStatus()" [disabled]="isLoading">
+            <i class="fa-solid fa-save"></i> Enregistrer le changement
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="spots.length === 0" style="text-align: center; padding: 4rem 0;" class="empty-state">
+      <i class="fa-solid fa-square-parking" style="font-size: 3.5rem; color: var(--text-muted); margin-bottom: 1.5rem;"></i>
+      <p>Aucune place n'a été générée pour ce parking. Contactez votre administrateur.</p>
+    </div>
+  </div>
+
+  <!-- QR Scanner Section -->
+  <div *ngIf="activeSection === 'scanner'" class="glass-card" style="margin-top: 1.5rem;">
+    <h2>Contrôle de Réservation par QR Code</h2>
+    <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+      Saisissez le code QR du client (exemple: <code style="color: var(--accent);">QR-XXXXXX</code>) pour valider sa réservation, effectuer le Check-in à son arrivée, ou le Check-out à son départ.
+    </p>
+
+    <!-- Scan Manual Input Form -->
+    <form (submit)="onSearchQr($event)" style="display: flex; gap: 1rem; margin-bottom: 2.5rem; max-width: 600px;">
+      <div style="flex-grow: 1; margin-bottom: 0;" class="form-group">
+        <input type="text" class="form-control" placeholder="Entrez le code QR de la réservation (ex: QR-5A7EF8)..." [(ngModel)]="searchQrCode" name="searchQr">
+      </div>
+      <button class="btn btn-primary" style="width: auto; white-space: nowrap;" type="submit" [disabled]="isLoading">
+        <i class="fa-solid fa-search"></i> Valider le code
+      </button>
+    </form>
+
+    <!-- Scanned Reservation Results -->
+    <div *ngIf="scannedReservation" class="glass-card" style="background: rgba(255, 255, 255, 0.02); border-color: var(--primary);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--glass-border); padding-bottom: 1.5rem; margin-bottom: 1.5rem;">
+        <div>
+          <span class="badge" [ngClass]="{
+            'badge-pending': scannedReservation.status === 'pending',
+            'badge-approved': scannedReservation.status === 'confirmed' || scannedReservation.status === 'active',
+            'badge-rejected': scannedReservation.status === 'cancelled',
+            'badge-suspended': scannedReservation.status === 'expired' || scannedReservation.status === 'no_show'
+          }">
+            Statut: {{ scannedReservation.status }}
+          </span>
+          <h3 style="margin-top: 0.5rem; font-size: 1.4rem;">Réservation de {{ scannedReservation.clientName }}</h3>
+          <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 0.25rem;">
+            Code QR: <strong style="color: var(--accent); font-family: monospace;">{{ scannedReservation.qrCode }}</strong>
+          </p>
+        </div>
+        <div style="text-align: right;">
+          <span style="font-size: 0.8rem; color: var(--text-muted); display: block;">Place assignée</span>
+          <span style="font-size: 1.8rem; font-weight: bold; color: #fff; font-family: 'Outfit';">{{ scannedReservation.spotNumber }}</span>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-bottom: 2rem;">
+        <div>
+          <h4 style="color: var(--primary); margin-bottom: 0.75rem;"><i class="fa-solid fa-car"></i> Véhicule</h4>
+          <p><strong>Plaque :</strong> <span style="font-family: monospace; font-size: 1.05rem; background: rgba(255,255,255,0.05); padding: 0.2rem 0.5rem; border-radius: 4px;">{{ scannedReservation.vehiclePlate }}</span></p>
+          <p style="margin-top: 0.5rem;"><strong>Type :</strong> {{ scannedReservation.vehicleType }}</p>
+        </div>
+        <div>
+          <h4 style="color: var(--secondary); margin-bottom: 0.75rem;"><i class="fa-solid fa-clock"></i> Horaire prévu</h4>
+          <p><strong>Arrivée :</strong> {{ scannedReservation.startTime | date:'dd/MM/yyyy HH:mm' }}</p>
+          <p><strong>Départ :</strong> {{ scannedReservation.endTime | date:'dd/MM/yyyy HH:mm' }}</p>
+        </div>
+      </div>
+
+      <!-- Control actions -->
+      <div style="border-top: 1px solid var(--glass-border); padding-top: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+        <!-- If confirmed -> Checkin allowed -->
+        <button *ngIf="scannedReservation.status === 'confirmed' || scannedReservation.status === 'pending'" 
+                class="btn btn-primary" style="width: auto; padding: 0.75rem 2rem;" 
+                (click)="onCheckIn(scannedReservation._id)" [disabled]="isLoading">
+          <i class="fa-solid fa-sign-in"></i> Confirmer l'Arrivée (Check-in)
+        </button>
+
+        <!-- If active -> Checkout allowed -->
+        <button *ngIf="scannedReservation.status === 'active'" 
+                class="btn btn-primary" style="width: auto; padding: 0.75rem 2rem; background: linear-gradient(135deg, var(--accent) 0%, #059669 100%);" 
+                (click)="onCheckOut(scannedReservation._id)" [disabled]="isLoading">
+          <i class="fa-solid fa-sign-out"></i> Confirmer la Sortie (Check-out)
+        </button>
+
+        <!-- If pending/confirmed -> mark as no-show allowed -->
+        <button *ngIf="scannedReservation.status === 'confirmed' || scannedReservation.status === 'pending'" 
+                class="btn btn-secondary" style="width: auto; color: var(--danger); border-color: rgba(239, 68, 68, 0.2);" 
+                (click)="onMarkNoShow(scannedReservation._id)" [disabled]="isLoading">
+          <i class="fa-solid fa-user-slash"></i> Client Non Présenté (No-Show)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reservations Section -->
+  <div *ngIf="activeSection === 'reservations'" class="glass-card" style="margin-top: 1.5rem;">
+    <h2 style="margin-bottom: 1.5rem;">📋 Suivi de toutes les réservations du parking</h2>
+    
+    <div class="custom-table-container" *ngIf="reservations.length > 0">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Client</th>
+            <th>Place</th>
+            <th>Véhicule</th>
+            <th>Horaires</th>
+            <th>QR Code</th>
+            <th>Statut</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of reservations">
+            <td>
+              <strong>{{ r.clientName }}</strong>
+              <div style="font-size: 0.75rem; color: var(--text-secondary);">{{ r.clientPhone }}</div>
+            </td>
+            <td>
+              <strong style="font-size: 1.1rem; color: var(--primary);">{{ r.spotNumber }}</strong>
+            </td>
+            <td>
+              <span style="font-family: monospace; font-size: 0.85rem; background: rgba(255,255,255,0.05); padding: 0.15rem 0.35rem; border-radius: 4px;">{{ r.vehiclePlate }}</span>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">{{ r.vehicleType }}</div>
+            </td>
+            <td>
+              <span style="font-size: 0.85rem; display: block;">Déb: {{ r.startTime | date:'dd/MM HH:mm' }}</span>
+              <span style="font-size: 0.85rem; display: block; color: var(--text-secondary);">Fin: {{ r.endTime | date:'dd/MM HH:mm' }}</span>
+            </td>
+            <td style="font-family: monospace; font-size: 0.85rem; color: var(--accent);">{{ r.qrCode }}</td>
+            <td>
+              <span class="badge" [ngClass]="{
+                'badge-pending': r.status === 'pending',
+                'badge-approved': r.status === 'confirmed' || r.status === 'active' || r.status === 'completed',
+                'badge-rejected': r.status === 'cancelled',
+                'badge-suspended': r.status === 'expired' || r.status === 'no_show'
+              }">
+                {{ r.status === 'pending' ? 'Attente' : (r.status === 'confirmed' ? 'Confirmé' : (r.status === 'active' ? 'Actif' : (r.status === 'completed' ? 'Terminé' : (r.status === 'cancelled' ? 'Annulé' : r.status)))) }}
+              </span>
+            </td>
+            <td>
+              <div style="display: flex; gap: 0.25rem;">
+                <button *ngIf="r.status === 'confirmed' || r.status === 'pending'" 
+                        class="btn btn-primary" style="padding: 0.35rem 0.65rem; font-size: 0.75rem; width: auto;" 
+                        (click)="activeSection = 'scanner'; searchQrCode = r.qrCode; onSearchQr();" title="Check-in">
+                  <i class="fa-solid fa-sign-in"></i> In
+                </button>
+                <button *ngIf="r.status === 'active'" 
+                        class="btn btn-primary" style="padding: 0.35rem 0.65rem; font-size: 0.75rem; width: auto; background: var(--accent);" 
+                        (click)="activeSection = 'scanner'; searchQrCode = r.qrCode; onSearchQr();" title="Check-out">
+                  <i class="fa-solid fa-sign-out"></i> Out
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div *ngIf="reservations.length === 0" style="text-align: center; padding: 4rem 0;" class="empty-state">
+      <i class="fa-solid fa-calendar-times" style="font-size: 3.5rem; color: var(--text-muted); margin-bottom: 1.5rem;"></i>
+      <p>Aucune réservation n'a été enregistrée pour ce parking.</p>
+    </div>
+  </div>
+
+  <!-- Réclamations -->
+  <div *ngIf="activeSection === 'complaints'" style="margin-top: 1.5rem;">
+    <div class="grid-2">
+      <div class="glass-card">
+        <h3><i class="fa-solid fa-inbox"></i> Réclamations du parking</h3>
+        <div *ngIf="complaints.length === 0" class="empty-state"><p>Aucune réclamation.</p></div>
+        <div *ngFor="let c of complaints" (click)="openComplaint(c)" style="padding: 0.75rem 0; border-bottom: 1px solid var(--glass-border); cursor: pointer;">
+          <strong>{{ c.subject }}</strong>
+          <p style="margin: 0.25rem 0 0; color: var(--text-secondary); font-size: 0.9rem;">
+            {{ c.clientId?.name }} · {{ getComplaintStatusLabel(c.status) }} · {{ c.createdAt | date:'dd/MM/yyyy' }}
+          </p>
+        </div>
+      </div>
+      <div class="glass-card" *ngIf="selectedComplaint">
+        <h3>{{ selectedComplaint.subject }}</h3>
+        <p>{{ selectedComplaint.description }}</p>
+        <div class="form-group">
+          <label>Réponse</label>
+          <textarea class="form-control" rows="3" [(ngModel)]="complaintResponseNote"></textarea>
+          <button class="btn btn-secondary" type="button" style="margin-top: 0.5rem;" (click)="respondComplaint()" [disabled]="complaintActionLoading">Répondre</button>
+        </div>
+        <div class="form-group">
+          <label>Résolution</label>
+          <textarea class="form-control" rows="3" [(ngModel)]="complaintResolveNote"></textarea>
+          <button class="btn btn-primary" type="button" style="margin-top: 0.5rem;" (click)="resolveComplaint()" [disabled]="complaintActionLoading">Résoudre</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Section -->
+  <div *ngIf="activeSection === 'profile'" class="employee-profile">
+    <div *ngIf="profileLoadError" class="profile-alert error">{{ profileLoadError }}</div>
+
+    <ng-container *ngIf="profile">
+      <div class="employee-profile-hero glass-card">
+        <div class="employee-profile-avatar">{{ getProfileInitials() }}</div>
+        <div class="employee-profile-hero-info">
+          <span class="employee-role-badge"><i class="fa-solid fa-id-badge"></i> {{ getPositionLabel() }}</span>
+          <h2>{{ profileName || profile.name }}</h2>
+          <p class="employee-profile-email"><i class="fa-solid fa-envelope"></i> {{ profile.email }}</p>
+          <div class="employee-profile-meta">
+            <span class="badge badge-approved"><i class="fa-solid fa-hashtag"></i> {{ profile.employeeNumber }}</span>
+            <span class="meta-item" *ngIf="profile.hireDate">
+              <i class="fa-solid fa-calendar-plus"></i> Embauché le {{ profile.hireDate | date:'dd/MM/yyyy' }}
+            </span>
+            <span class="meta-item">
+              <i class="fa-solid fa-clock"></i> {{ profile.shiftStart }} – {{ profile.shiftEnd }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="employee-profile-stats">
+        <div class="stat-card glass-card">
+          <i class="fa-solid fa-square-parking"></i>
+          <div>
+            <strong>{{ getParkingName() }}</strong>
+            <span>Parking assigné</span>
+            <small>{{ parking?.city || '—' }}</small>
+          </div>
+        </div>
+        <div class="stat-card glass-card">
+          <i class="fa-solid fa-building"></i>
+          <div>
+            <strong>{{ getCompanyName() }}</strong>
+            <span>Entreprise</span>
+            <small>{{ profile.companyId?.email || '—' }}</small>
+          </div>
+        </div>
+        <div class="stat-card glass-card">
+          <i class="fa-solid fa-list-check"></i>
+          <div>
+            <strong>{{ getActiveReservationsCount() }}</strong>
+            <span>Réservations actives</span>
+            <small>{{ reservations.length }} au total</small>
+          </div>
+        </div>
+        <div class="stat-card glass-card">
+          <i class="fa-solid fa-car"></i>
+          <div>
+            <strong>{{ stats.available }}/{{ stats.total }}</strong>
+            <span>Places libres</span>
+            <small>{{ getOccupancyRate() }}% occupé</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="employee-profile-grid">
+        <form (submit)="onUpdateProfile($event)" class="glass-card employee-profile-form">
+          <h3><i class="fa-solid fa-user-pen"></i> Informations personnelles</h3>
+          <p class="profile-intro">Mettez à jour vos coordonnées professionnelles de contact.</p>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Nom complet *</label>
+              <input type="text" class="form-control" [(ngModel)]="profileName" name="name" required>
+            </div>
+            <div class="form-group">
+              <label>Téléphone de contact *</label>
+              <input type="tel" class="form-control" [(ngModel)]="profilePhone" name="phone" placeholder="06XXXXXXXX" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Email professionnel</label>
+            <input type="email" class="form-control" [value]="profile.email" disabled>
+            <small class="field-hint">L'email de connexion ne peut pas être modifié.</small>
+          </div>
+
+          <h3 class="profile-section-title secondary"><i class="fa-solid fa-lock"></i> Sécurité du compte</h3>
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Nouveau mot de passe</label>
+              <input type="password" class="form-control" [(ngModel)]="profilePassword" name="pPassword" placeholder="Laisser vide pour ne pas changer" autocomplete="new-password">
+            </div>
+            <div class="form-group">
+              <label>Confirmer le mot de passe</label>
+              <input type="password" class="form-control" [(ngModel)]="profilePasswordConfirm" name="pPasswordConfirm" placeholder="Répéter le mot de passe" autocomplete="new-password">
+            </div>
+          </div>
+
+          <div class="profile-actions">
+            <button class="btn btn-primary" type="submit" [disabled]="profileSaving">
+              <i class="fa-solid fa-save"></i>
+              {{ profileSaving ? 'Enregistrement...' : 'Enregistrer les modifications' }}
+            </button>
+            <button class="btn btn-secondary" type="button" (click)="resetProfileForm()" [disabled]="profileSaving">
+              <i class="fa-solid fa-rotate-left"></i> Annuler
+            </button>
+          </div>
+        </form>
+
+        <aside class="glass-card employee-profile-aside">
+          <h3><i class="fa-solid fa-circle-info"></i> Fiche employé</h3>
+          <ul class="employee-info-list">
+            <li><span>Matricule</span><strong>{{ profile.employeeNumber }}</strong></li>
+            <li><span>Poste</span><strong>{{ getPositionLabel() }}</strong></li>
+            <li><span>Parking</span><strong>{{ getParkingName() }}</strong></li>
+            <li><span>Entreprise</span><strong>{{ getCompanyName() }}</strong></li>
+            <li><span>Horaires</span><strong>{{ profile.shiftStart }} – {{ profile.shiftEnd }}</strong></li>
+            <li><span>Dernière connexion</span><strong>{{ profile.lastLogin ? (profile.lastLogin | date:'dd/MM/yyyy HH:mm') : '—' }}</strong></li>
+          </ul>
+
+          <div class="employee-permissions" *ngIf="profile.permissions?.length">
+            <h4>Permissions</h4>
+            <div class="permission-tags">
+              <span class="permission-tag" *ngFor="let perm of profile.permissions">{{ perm }}</span>
+            </div>
+          </div>
+
+          <div class="employee-quick-links">
+            <h4>Accès rapides</h4>
+            <button type="button" class="btn btn-secondary quick-link-btn" (click)="activeSection = 'scanner'">
+              <i class="fa-solid fa-qrcode"></i> Contrôle QR Code
+            </button>
+            <button type="button" class="btn btn-secondary quick-link-btn" (click)="activeSection = 'spots'">
+              <i class="fa-solid fa-square-parking"></i> Gestion des places
+            </button>
+            <button type="button" class="btn btn-secondary quick-link-btn" (click)="activeSection = 'reservations'">
+              <i class="fa-solid fa-list-check"></i> Réservations
+            </button>
+          </div>
+        </aside>
+      </div>
+    </ng-container>
+  </div>
+</div>
+
+<!-- Toast notifications -->
+<div class="toast-container" *ngIf="toastMessage">
+  <div class="toast" [ngClass]="'toast-' + toastType">
+    <i class="fa-solid" [ngClass]="toastType === 'success' ? 'fa-circle-check' : 'fa-circle-xmark'"></i>
+    <span>{{ toastMessage }}</span>
+  </div>
+</div>

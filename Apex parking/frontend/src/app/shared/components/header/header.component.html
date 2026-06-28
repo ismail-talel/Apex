@@ -1,0 +1,119 @@
+<header class="app-header">
+  <div class="header-inner">
+    <div class="header-brand" (click)="goHome()" style="cursor: pointer;">
+      <app-logo size="md"></app-logo>
+    </div>
+
+    <nav class="header-nav" *ngIf="isClient()">
+      <button class="nav-link" [class.active]="isActive('/map') || isActive('/parking')" (click)="router.navigate(['/map'])">
+        <i class="fa-solid fa-map-location-dot"></i> Carte
+      </button>
+      <button class="nav-link" [class.active]="isClientReservationsActive()" (click)="goToReservations()">
+        <i class="fa-solid fa-calendar-check"></i> Réservations
+      </button>
+      <button class="nav-link" [class.active]="isActive('/client')" (click)="router.navigate(['/client'], { queryParams: { section: 'profile' } })">
+        <i class="fa-solid fa-user"></i> Mon espace
+      </button>
+    </nav>
+
+    <nav class="header-nav" *ngIf="authService.isLoggedIn() && !isClient()">
+      <button class="nav-link" [class.active]="isDashboardActive()" (click)="goToDashboard()">
+        <i class="fa-solid fa-gauge-high"></i> Mon espace
+      </button>
+    </nav>
+
+    <div class="header-right">
+      <ng-container *ngIf="authService.isLoggedIn(); else guestActions">
+        <button class="btn-mailbox" (click)="toggleMailbox()" title="Boîte mail virtuelle">
+          <i class="fa-solid fa-envelope" style="font-size: 1.2rem;"></i>
+          <span class="mail-badge" *ngIf="mockEmails.length > 0">{{ mockEmails.length }}</span>
+        </button>
+        <span class="role-badge">{{ getRoleBadge() }}</span>
+        <span class="user-name">{{ authService.currentUserValue?.name }}</span>
+        <button class="btn-logout" (click)="logout()">
+          <i class="fa-solid fa-right-from-bracket"></i> Déconnexion
+        </button>
+      </ng-container>
+
+      <ng-template #guestActions>
+        <button class="btn-login" (click)="router.navigate(['/auth'])">
+          <i class="fa-solid fa-right-to-bracket"></i> Connexion
+        </button>
+      </ng-template>
+    </div>
+  </div>
+</header>
+
+<!-- Virtual Mailbox Drawer -->
+<div class="mailbox-drawer glass-card" *ngIf="showMailbox && authService.isLoggedIn()">
+  <div class="drawer-header">
+    <h3>📬 Boîte Virtuelle (Emails envoyés par le Back)</h3>
+    <div style="display: flex; gap: 0.5rem;">
+      <button class="btn btn-secondary" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.8rem;" (click)="loadMockEmails()" [disabled]="isLoadingMail">
+        <i class="fa-solid fa-arrows-rotate"></i>
+      </button>
+      <button class="btn btn-danger" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.8rem; background: var(--danger);" (click)="clearMailbox()" [disabled]="isLoadingMail">
+        <i class="fa-solid fa-trash"></i> Vider
+      </button>
+      <button class="btn btn-secondary" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.8rem;" (click)="showMailbox = false">X</button>
+    </div>
+  </div>
+
+  <div class="drawer-body">
+    <div *ngFor="let mail of mockEmails" class="mail-item" style="border-bottom: 1px solid var(--glass-border); padding: 1rem 0; font-size: 0.85rem;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+        <strong style="color: var(--primary);">À: {{ mail.to }}</strong>
+        <span style="font-size: 0.75rem; color: var(--text-muted);">{{ mail.createdAt | date:'HH:mm:ss' }}</span>
+      </div>
+      <div style="font-weight: 600; color: #fff; margin-bottom: 0.5rem;">Sujet: {{ mail.subject }}</div>
+      <div class="mail-body-content" [innerHTML]="mail.body" style="background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: var(--border-radius-sm); border: 1px solid var(--glass-border); max-height: 150px; overflow-y: auto;"></div>
+    </div>
+    <div class="empty-state" *ngIf="mockEmails.length === 0" style="text-align: center; padding: 3rem 0; color: var(--text-muted);">
+      <i class="fa-solid fa-envelope-open" style="font-size: 2.5rem; margin-bottom: 1rem;"></i>
+      <p>Aucun email simulé reçu pour le moment.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Floating AI Chat Widget (client only) -->
+<div class="floating-chat-container" *ngIf="showFloatingChat">
+  <button class="chat-toggle-btn" (click)="toggleChat()" [class.active]="showChat" title="Assistant IA Mistral">
+    <i class="fa-solid" [ngClass]="showChat ? 'fa-xmark' : 'fa-robot'"></i>
+  </button>
+
+  <div class="chat-window glass-card" *ngIf="showChat">
+    <div class="chat-header">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <i class="fa-solid fa-robot" style="color: var(--primary);"></i>
+        <strong>Assistant IA Mistral</strong>
+      </div>
+      <button class="btn-close" (click)="showChat = false">X</button>
+    </div>
+
+    <div class="chat-messages">
+      <div *ngFor="let msg of chatHistory" [class]="'chat-msg msg-' + msg.sender">
+        <div class="msg-bubble">
+          {{ msg.text }}
+        </div>
+      </div>
+      <div class="chat-msg msg-bot" *ngIf="isLoadingChat">
+        <div class="msg-bubble bubble-loading">
+          <i class="fa-solid fa-ellipsis fa-bounce"></i> Réflexion...
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-suggestions">
+      <button *ngFor="let sug of suggestions" class="btn-suggestion" (click)="clickSuggestion(sug)" [disabled]="isLoadingChat">
+        {{ sug }}
+      </button>
+    </div>
+
+    <form (submit)="sendChatMessage(); $event.preventDefault();" class="chat-form">
+      <input type="text" class="form-control chat-input" placeholder="Posez votre question..." [(ngModel)]="chatMessage" name="chatMsg" [disabled]="isLoadingChat">
+      <button class="btn btn-primary btn-chat-send" type="submit" [disabled]="isLoadingChat || !chatMessage.trim()">
+        <i class="fa-solid fa-paper-plane"></i>
+      </button>
+    </form>
+  </div>
+</div>

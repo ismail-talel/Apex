@@ -1,0 +1,60 @@
+.app-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  user-select: none;
+}
+
+.app-logo__mark {
+  display: block;
+  flex-shrink: 0;
+  filter: drop-shadow(0 4px 14px rgba(99, 102, 241, 0.35));
+  transition: transform 0.25s ease, filter 0.25s ease;
+}
+
+.app-logo:hover .app-logo__mark {
+  transform: translateY(-1px) scale(1.02);
+  filter: drop-shadow(0 6px 18px rgba(99, 102, 241, 0.45));
+}
+
+.app-logo__text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.app-logo__title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.app-logo__tagline {
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.app-logo--sm .app-logo__mark { width: 28px; height: 28px; }
+.app-logo--sm .app-logo__title { font-size: 1rem; }
+.app-logo--sm .app-logo__tagline { font-size: 0.62rem; }
+
+.app-logo--md .app-logo__mark { width: 36px; height: 36px; }
+.app-logo--md .app-logo__title { font-size: 1.25rem; }
+
+.app-logo--lg .app-logo__mark { width: 52px; height: 52px; }
+.app-logo--lg .app-logo__title { font-size: 1.65rem; }
+.app-logo--lg .app-logo__tagline { font-size: 0.78rem; }
+
+.app-logo--xl .app-logo__mark { width: 72px; height: 72px; }
+.app-logo--xl .app-logo__title { font-size: 2rem; }
+.app-logo--xl .app-logo__tagline { font-size: 0.82rem; }
+
+.app-logo--mark-only {
+  gap: 0;
+}

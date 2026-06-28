@@ -1,0 +1,313 @@
+<div class="ps-shell">
+  <!-- Header -->
+  <div class="ps-header">
+    <div class="ps-title-area">
+      <span class="ps-pulse" [class.on]="isSimulating"></span>
+      <span class="ps-title">Parking Monitor</span>
+      <span class="ps-badge live" *ngIf="isSimulating">LIVE</span>
+      <span class="ps-badge ws" [class.ok]="wsConnected">
+        {{ wsConnected ? '⚡ WS' : '○ WS' }}
+      </span>
+      <span class="ps-badge updates" *ngIf="updateCount > 0">{{ updateCount }} MAJ</span>
+    </div>
+    <div class="ps-controls">
+      <span class="ps-update" *ngIf="lastUpdate">
+        {{ lastUpdate | date:'HH:mm:ss' }}
+      </span>
+
+      <input
+        class="ps-search"
+        type="text"
+        [(ngModel)]="searchQuery"
+        (ngModelChange)="applyFilters()"
+        placeholder="Rechercher place…"
+      />
+
+      <select class="ps-sel" [(ngModel)]="selectedLevel" (ngModelChange)="applyFilters()">
+        <option value="">Tous niveaux</option>
+        <option *ngFor="let l of levels" [value]="l">Niveau {{ l }}</option>
+      </select>
+
+      <select class="ps-sel" [(ngModel)]="selectedZone" (ngModelChange)="applyFilters()">
+        <option value="">Toutes zones</option>
+        <option *ngFor="let z of zones" [value]="z">Zone {{ z }}</option>
+      </select>
+
+      <select class="ps-sel" [(ngModel)]="filterType" (ngModelChange)="applyFilters()">
+        <option value="">Tous types</option>
+        <option *ngFor="let t of spotTypes" [value]="t">{{ t }}</option>
+      </select>
+
+      <select class="ps-sel" [(ngModel)]="filterStatus" (ngModelChange)="applyFilters()">
+        <option value="all">Tous états</option>
+        <option value="available">Disponibles</option>
+        <option value="occupied">Occupés</option>
+        <option value="reserved">Réservés</option>
+        <option value="maintenance">Maintenance</option>
+      </select>
+
+      <div class="ps-view-btns">
+        <button [class.act]="viewMode==='plan'" (click)="viewMode='plan'">Plan</button>
+        <button [class.act]="viewMode==='grid'" (click)="viewMode='grid'">Grille</button>
+        <button [class.act]="viewMode==='zone'" (click)="viewMode='zone'">Zones</button>
+      </div>
+
+      <div class="ps-speed-btns" *ngIf="isSimulating || !simLoading">
+        <button
+          *ngFor="let s of simSpeeds"
+          [class.act]="simInterval === s.value"
+          (click)="setSimSpeed(s.value)"
+          [title]="s.label">
+          {{ s.label }}
+        </button>
+      </div>
+
+      <button class="ps-btn-sim" [class.stop]="isSimulating" (click)="toggleSimulation()" [disabled]="simLoading">
+        <span *ngIf="!simLoading">{{ isSimulating ? '⏹ Arrêter' : '▶ Simuler' }}</span>
+        <span *ngIf="simLoading" class="spin-sm">⏳</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="ps-statsbar" *ngIf="stats">
+    <div class="sc available">
+      <b>{{ stats.available }}</b><small>Libres</small>
+    </div>
+    <div class="sc occupied">
+      <b>{{ stats.occupied }}</b><small>Occupés</small>
+    </div>
+    <div class="sc reserved">
+      <b>{{ stats.reserved }}</b><small>Réservés</small>
+    </div>
+    <div class="sc maint">
+      <b>{{ stats.maintenance }}</b><small>Maint.</small>
+    </div>
+    <div class="sc total">
+      <b>{{ stats.total }}</b><small>Total</small>
+    </div>
+    <div class="occ-wrap">
+      <div class="occ-label">
+        {{ stats.occupancyRate }}% occupation
+        <span class="occ-trend" *ngIf="stats.trends?.lastHour">{{ stats.trends.lastHour }}</span>
+      </div>
+      <div class="occ-track">
+        <div
+          class="occ-fill"
+          [style.width]="stats.occupancyRate + '%'"
+          [style.background]="getOccupancyColor(stats.occupancyRate)">
+        </div>
+      </div>
+    </div>
+    <div class="hourly-chart" *ngIf="stats.hourlyOccupation?.length">
+      <div
+        *ngFor="let h of stats.hourlyOccupation"
+        class="h-bar"
+        [style.height.%]="(h.occupation / getHourlyMax()) * 100"
+        [title]="h.label + ': ' + h.occupation + '%'">
+      </div>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="ps-legend">
+    <span class="li"><i class="ld av"></i>Disponible</span>
+    <span class="li"><i class="ld oc"></i>Occupé</span>
+    <span class="li"><i class="ld rs"></i>Réservé</span>
+    <span class="li"><i class="ld mn"></i>Maintenance</span>
+    <span class="sep"></span>
+    <span class="li"><i class="ld ha"></i>Handicapé</span>
+    <span class="li"><i class="ld el"></i>Électrique</span>
+    <span class="li"><i class="ld vp"></i>VIP</span>
+    <span class="li"><i class="ld fm"></i>Famille</span>
+    <span class="li"><i class="ld mo"></i>Moto</span>
+    <span class="li"><i class="ld co"></i>Compact</span>
+  </div>
+
+  <!-- Main layout: content + activity -->
+  <div class="ps-body">
+    <div class="ps-main">
+      <!-- Loading -->
+      <div class="ps-loader" *ngIf="loading">
+        <div class="ld-spinner"></div>
+        <span>Chargement des places…</span>
+      </div>
+
+      <!-- Plan view -->
+      <div class="ps-plan-wrap" *ngIf="!loading && viewMode==='plan'">
+        <p class="ps-count">{{ filteredSpots.length }} places · Vue plan</p>
+        <div *ngFor="let lvl of planLevels" class="plan-level">
+          <div class="plan-level-head" *ngIf="planLevels.length > 1">
+            <span>🏢 Niveau {{ lvl.level }}</span>
+          </div>
+          <div *ngFor="let zg of lvl.zones" class="plan-zone">
+            <div class="plan-zone-head">
+              <span class="plan-zone-name">Zone {{ zg.zone }}</span>
+              <span class="plan-zone-stats">
+                <span class="zs-av">{{ zg.available }}</span> / {{ zg.total }} libres
+              </span>
+            </div>
+            <div class="plan-rows">
+              <ng-container *ngFor="let row of zg.rows; let ri = index">
+                <div class="plan-row">
+                  <span class="row-label">L{{ row.row }}</span>
+                  <div class="plan-row-spots">
+                    <div
+                      *ngFor="let s of row.spots; trackBy: trackId"
+                      class="sp plan-sp"
+                      [class]="spotCls(s)"
+                      [class.flash]="flashIds.has(s._id)"
+                      (click)="open(s)"
+                      [attr.title]="s.spotNumber + ' · ' + stateLabel(s)"
+                    >
+                      <span class="sp-car" *ngIf="state(s) === 'occupied'">🚗</span>
+                      <span class="sp-n">{{ s.spotNumber }}</span>
+                      <span class="sp-i" *ngIf="typeIcon(s.type)">{{ typeIcon(s.type) }}</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="plan-aisle" *ngIf="isAisleAfter(ri) && ri < zg.rows.length - 1">
+                  <span>↕ Allée</span>
+                </div>
+              </ng-container>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grid view -->
+      <div class="ps-grid-wrap" *ngIf="!loading && viewMode==='grid'">
+        <p class="ps-count">{{ filteredSpots.length }} places affichées</p>
+        <div class="ps-grid">
+          <div
+            *ngFor="let s of filteredSpots; trackBy: trackId"
+            class="sp"
+            [class]="spotCls(s)"
+            [class.flash]="flashIds.has(s._id)"
+            (click)="open(s)"
+            [attr.title]="s.spotNumber + ' · ' + s.type + ' · ' + stateLabel(s)"
+          >
+            <span class="sp-car" *ngIf="state(s) === 'occupied'">🚗</span>
+            <span class="sp-n">{{ s.spotNumber }}</span>
+            <span class="sp-i">{{ typeIcon(s.type) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Zone view -->
+      <div class="ps-zones-wrap" *ngIf="!loading && viewMode==='zone'">
+        <div *ngFor="let zg of zoneKeys" class="zg">
+          <div class="zg-head">
+            <span class="zg-name">Zone {{ zg }}</span>
+            <span class="zg-stats">
+              <span class="zs-av">{{ zoneAvail(zg) }} libres</span>
+              / {{ zoneGroups[zg].length }}
+            </span>
+            <div class="zg-bar">
+              <div
+                class="zg-bar-fill"
+                [style.width.%]="(zoneAvail(zg) / zoneGroups[zg].length) * 100">
+              </div>
+            </div>
+          </div>
+          <div class="zg-grid">
+            <div
+              *ngFor="let s of zoneGroups[zg]; trackBy: trackId"
+              class="sp sm"
+              [class]="spotCls(s)"
+              [class.flash]="flashIds.has(s._id)"
+              (click)="open(s)"
+              [attr.title]="s.spotNumber"
+            >
+              <span class="sp-car sm" *ngIf="state(s) === 'occupied'">🚗</span>
+              <span class="sp-ns">{{ s.spotNumber }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty -->
+      <div class="ps-empty" *ngIf="!loading && allSpots.length === 0">
+        <div class="empty-icon">🅿</div>
+        <p>Aucune place configurée pour ce parking.</p>
+        <button class="ps-btn-gen" (click)="genSpots()">Générer les places</button>
+      </div>
+      <div class="ps-empty sm" *ngIf="!loading && allSpots.length > 0 && filteredSpots.length === 0">
+        <p>Aucune place correspond aux filtres sélectionnés.</p>
+      </div>
+    </div>
+
+    <!-- Activity panel -->
+    <div class="ps-activity" [class.collapsed]="!showActivity">
+      <div class="act-head">
+        <span>📋 Activité en direct</span>
+        <div class="act-actions">
+          <button (click)="clearActivity()" title="Effacer">🗑</button>
+          <button (click)="showActivity = !showActivity" title="Réduire">
+            {{ showActivity ? '◀' : '▶' }}
+          </button>
+        </div>
+      </div>
+      <div class="act-list" *ngIf="showActivity">
+        <div *ngIf="activityLog.length === 0" class="act-empty">
+          <span *ngIf="!isSimulating">Lancez la simulation pour voir l'activité</span>
+          <span *ngIf="isSimulating">En attente de changements…</span>
+        </div>
+        <div
+          *ngFor="let ev of activityLog"
+          class="act-item"
+          [class]="'act-' + ev.type"
+        >
+          <span class="act-icon">{{ activityIcon(ev.type) }}</span>
+          <div class="act-info">
+            <span class="act-msg">{{ ev.message }}</span>
+            <span class="act-meta">Zone {{ ev.zone }} · {{ ev.time | date:'HH:mm:ss' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail overlay -->
+  <div class="ps-overlay" *ngIf="detail" (click)="onOverlayClick($event)">
+    <div class="ps-detail" (click)="onDetailClick($event)">
+      <button class="det-close" (click)="closeDetail()">✕</button>
+
+      <div class="det-head" [class]="'dh-' + state(detail)">
+        <span class="det-num">{{ detail.spotNumber }}</span>
+        <span class="det-badge">{{ stateLabel(detail) }}</span>
+        <span class="det-type">{{ detail.type }}</span>
+      </div>
+
+      <div class="det-body">
+        <div class="det-row"><span>Zone</span><b>{{ detail.zone }}</b></div>
+        <div class="det-row"><span>Niveau</span><b>{{ detail.level }}</b></div>
+        <div class="det-row"><span>Position</span><b>L{{ detail.row }} · C{{ detail.column }}</b></div>
+        <div class="det-row"><span>Tarif ×</span><b>{{ detail.priceMultiplier }}</b></div>
+        <div class="det-row"><span>Réservations</span><b>{{ detail.totalReservations }}</b></div>
+        <div class="det-row" *ngIf="detail.lastReservedAt">
+          <span>Dernière résa</span><b>{{ detail.lastReservedAt | date:'dd/MM HH:mm' }}</b>
+        </div>
+        <div class="det-row" *ngIf="detail.lastFreedAt">
+          <span>Libéré le</span><b>{{ detail.lastFreedAt | date:'dd/MM HH:mm' }}</b>
+        </div>
+
+        <ng-container *ngIf="detail.currentReservation?.userName">
+          <div class="det-sep"></div>
+          <div class="det-row"><span>Client</span><b>{{ detail.currentReservation!.userName }}</b></div>
+          <div class="det-row" *ngIf="detail.currentReservation!.userEmail">
+            <span>Email</span><b>{{ detail.currentReservation!.userEmail }}</b>
+          </div>
+          <div class="det-row" *ngIf="detail.currentReservation!.vehiclePlate">
+            <span>Plaque</span>
+            <b class="plate">{{ detail.currentReservation!.vehiclePlate }}</b>
+          </div>
+          <div class="det-row" *ngIf="detail.currentReservation!.endTime">
+            <span>Fin prévue</span>
+            <b>{{ detail.currentReservation!.endTime | date:'HH:mm' }}</b>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+  </div>
+</div>
