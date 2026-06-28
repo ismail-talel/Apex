@@ -36,6 +36,26 @@
 - MongoDB
 - Angular CLI
 
+📊 Acteurs et cas d'usage
+Acteur	Bénéfice principal
+Client	Trouver, réserver et payer une place en moins de 2 minutes
+Entreprise	Gérer les abonnements de ses employés et suivre l'occupation
+Employé terrain	Contrôler les accès et gérer les litiges sur le terrain
+Administrateur	Superviser l'activité, analyser les KPIs et modérer les réclamations
+
+Perspectives d'évolution:
+📱 Application mobile (React Native / Flutter)
+
+📡 Intégration avec des capteurs IoT pour la détection réelle d'occupation
+
+📈 Module BI avancé avec tableaux de bord personnalisables
+
+🌍 Extension multi-villes et multi-pays
+
+👤 Auteur
+Ismail Talel
+Développeur Full Stack
+
 ### Installation
 
 ```bash
