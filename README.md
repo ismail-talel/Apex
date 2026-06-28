@@ -35,7 +35,7 @@
 - Node.js (v16+)
 - MongoDB
 - Angular CLI
-- 
+
 ### Installation
 
 ```bash
