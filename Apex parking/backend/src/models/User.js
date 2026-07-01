@@ -45,6 +45,18 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  webauthnEnabled: {
+    type: Boolean,
+    default: false
+  },
+  faceAuth: {
+    enabled: { type: Boolean, default: false },
+    rekognitionFaceId: { type: String, default: null, select: false },
+    faceHash: { type: String, default: null, select: false },
+    faceSignature: { type: [Number], default: null, select: false },
+    enrolledAt: { type: Date, default: null },
+    mockMode: { type: Boolean, default: false }
+  },
 
   // Client-specific fields
   loyaltyPoints: {

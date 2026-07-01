@@ -1,0 +1,14 @@
+# Secrets
+Apex parking/backend/.env
+
+# Dependencies
+Apex parking/backend/node_modules/
+Apex parking/frontend/node_modules/
+
+# Build output
+Apex parking/frontend/dist/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/

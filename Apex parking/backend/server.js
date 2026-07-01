@@ -57,8 +57,12 @@ const subscriptionRoutes = require('./src/routes/subscription');
 const reservationRoutes = require('./src/routes/reservation');
 const paymentRoutes = require('./src/routes/payment');
 const complaintRoutes = require('./src/routes/complaints');
+const webauthnRoutes  = require('./src/routes/webauthn');
+const faceAuthRoutes  = require('./src/routes/faceAuth');
 
 app.use('/api/auth',         authRoutes);
+app.use('/api/auth/webauthn', webauthnRoutes);
+app.use('/api/face-auth',    faceAuthRoutes);
 app.use('/api/users',        userRoutes);
 app.use('/api/admin',        adminRoutes);
 app.use('/api/ia',           iaRoutes);

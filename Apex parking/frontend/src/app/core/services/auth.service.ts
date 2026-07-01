@@ -43,6 +43,12 @@ export class AuthService {
     );
   }
 
+  public loginWithSession(res: { token: string; user: any }): void {
+    if (res.token && res.user) {
+      this.setSession(res.token, res.user);
+    }
+  }
+
   public logout(): void {
     localStorage.removeItem('token');
     localStorage.removeItem('user');

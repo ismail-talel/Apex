@@ -15,6 +15,22 @@ class AuthService {
     );
   }
 
+  issueSession(user) {
+    const token = this.generateToken(user);
+    return {
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+        webauthnEnabled: user.webauthnEnabled || false,
+        faceAuthEnabled: user.faceAuth?.enabled || false
+      }
+    };
+  }
+
   async registerUser(userData) {
     const { name, email, password, phone, role, address, siret, vehiclePlate, vehicleSerialNumber, vehicleType } = userData;
     const requestedRole = role ? role.toLowerCase() : UserRoles.CLIENT;
@@ -73,18 +89,7 @@ class AuthService {
     user.lastLogin = new Date();
     await user.save();
 
-    const token = this.generateToken(user);
-
-    return {
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        phone: user.phone
-      }
-    };
+    return this.issueSession(user);
   }
 
   async forgotPassword(email) {

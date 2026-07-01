@@ -585,6 +585,46 @@
         </button>
       </div>
     </form>
+
+    <div *ngIf="profile" class="security-section">
+      <h3 class="profile-section-title accent"><i class="fa-solid fa-shield-halved"></i> Sécurité avancée</h3>
+      <p class="profile-intro">Activez des méthodes de connexion supplémentaires pour renforcer la protection de votre compte.</p>
+
+      <div class="security-cards">
+        <div class="security-card">
+          <h4><i class="fa-solid fa-fingerprint"></i> Passkey (WebAuthn)</h4>
+          <p>Utilisez l'empreinte digitale, Face ID ou une clé de sécurité pour vous connecter sans mot de passe.</p>
+          <span class="security-status" [class.active]="profile.webauthnEnabled">
+            {{ profile.webauthnEnabled ? 'Activée' : 'Non configurée' }}
+          </span>
+          <button type="button" class="btn btn-secondary" (click)="registerPasskey()" [disabled]="securityLoading || !passkeySupported">
+            {{ profile.webauthnEnabled ? 'Ajouter une passkey' : 'Configurer une passkey' }}
+          </button>
+        </div>
+
+        <div class="security-card">
+          <h4><i class="fa-solid fa-face-smile"></i> Reconnaissance faciale</h4>
+          <p>
+            <span *ngIf="faceAuthMockMode"> Mode développement (sans AWS).</span>
+          </p>
+          <span class="security-status" [class.active]="profile.faceAuth?.enabled">
+            {{ profile.faceAuth?.enabled ? 'Activée' : 'Non configurée' }}
+          </span>
+          <div class="face-enroll-camera" *ngIf="!profile.faceAuth?.enabled">
+            <video #enrollVideo class="face-video" autoplay playsinline muted></video>
+            <button type="button" class="btn btn-secondary" (click)="startFaceEnrollCamera()" *ngIf="!faceEnrollCameraActive">
+              <i class="fa-solid fa-camera"></i> Activer la caméra
+            </button>
+            <button type="button" class="btn btn-primary" (click)="enrollFace()" [disabled]="securityLoading || !faceEnrollCameraActive">
+              Enregistrer mon visage
+            </button>
+          </div>
+          <button type="button" class="btn btn-secondary" *ngIf="profile.faceAuth?.enabled" (click)="removeFaceEnrollment()" [disabled]="securityLoading">
+            Désactiver la reconnaissance faciale
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 

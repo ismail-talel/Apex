@@ -1,14 +1,17 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { WebauthnService } from '../../core/services/webauthn.service';
+import { FaceAuthService } from '../../core/services/face-auth.service';
 
 @Component({
   selector: 'app-auth',
   templateUrl: './auth.component.html',
   styleUrls: ['./auth.component.css']
 })
-export class AuthComponent implements OnInit {
+export class AuthComponent implements OnInit, OnDestroy {
   activeTab: 'login' | 'register-client' | 'register-company' | 'forgot' | 'reset' = 'login';
+  loginMode: 'password' | 'passkey' | 'face' = 'password';
   readonly demoClientEmail = 'client@smartparking.com';
   readonly demoClientPassword = 'Client123!';
   readonly demoAdminEmail = 'admin@smartparking.com';
@@ -46,15 +49,45 @@ export class AuthComponent implements OnInit {
   isLoading = false;
   toastMessage: string | null = null;
   toastType: 'success' | 'error' = 'success';
+  passkeySupported = false;
+  cameraSupported = false;
+  faceCameraActive = false;
+  faceAuthMockMode = false;
+
+  @ViewChild('faceVideo') faceVideoRef?: ElementRef<HTMLVideoElement>;
 
   constructor(
     private authService: AuthService,
+    private webauthnService: WebauthnService,
+    private faceAuthService: FaceAuthService,
     private router: Router
-  ) {}
+  ) {
+    this.passkeySupported = this.webauthnService.isSupported();
+    this.cameraSupported = this.faceAuthService.isCameraSupported();
+  }
 
   ngOnInit(): void {
     if (this.authService.isLoggedIn()) {
       this.redirectUser();
+    }
+    this.faceAuthService.getStatus().subscribe({
+      next: (status) => {
+        this.faceAuthMockMode = !!status.mockMode;
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.stopFaceCamera();
+  }
+
+  switchLoginMode(mode: 'password' | 'passkey' | 'face'): void {
+    if (this.loginMode === 'face' && mode !== 'face') {
+      this.stopFaceCamera();
+    }
+    this.loginMode = mode;
+    if (mode === 'face') {
+      setTimeout(() => this.startFaceCamera(), 100);
     }
   }
 
@@ -122,6 +155,75 @@ export class AuthComponent implements OnInit {
         this.showToast(msg, 'error');
       }
     });
+  }
+
+  async onPasskeyLogin(): Promise<void> {
+    if (!this.loginEmail) {
+      this.showToast('Saisissez votre email pour utiliser la passkey', 'error');
+      return;
+    }
+    if (!this.passkeySupported) {
+      this.showToast('WebAuthn non supporté sur ce navigateur', 'error');
+      return;
+    }
+
+    this.isLoading = true;
+    try {
+      const res = await this.webauthnService.loginWithPasskey(this.loginEmail.trim().toLowerCase());
+      this.authService.loginWithSession(res);
+      this.isLoading = false;
+      this.showToast('Connexion par passkey réussie !');
+      this.redirectUser();
+    } catch (err: any) {
+      this.isLoading = false;
+      const msg = err?.error?.message || err?.message || 'Échec de la connexion par passkey';
+      this.showToast(msg, 'error');
+    }
+  }
+
+  async startFaceCamera(): Promise<void> {
+    const video = this.faceVideoRef?.nativeElement;
+    if (!video || this.faceCameraActive) return;
+    try {
+      await this.faceAuthService.startCamera(video);
+      this.faceCameraActive = true;
+    } catch {
+      this.showToast('Impossible d\'accéder à la caméra', 'error');
+    }
+  }
+
+  stopFaceCamera(): void {
+    this.faceAuthService.stopCamera();
+    this.faceCameraActive = false;
+  }
+
+  onFaceLogin(): void {
+    const video = this.faceVideoRef?.nativeElement;
+    if (!video || !this.faceCameraActive) {
+      this.showToast('Activez la caméra avant de vous connecter', 'error');
+      return;
+    }
+
+    this.isLoading = true;
+    try {
+      const image = this.faceAuthService.captureFrame(video);
+      this.faceAuthService.verifyFace(image).subscribe({
+        next: (res) => {
+          this.authService.loginWithSession(res);
+          this.isLoading = false;
+          this.showToast('Connexion par reconnaissance faciale réussie !');
+          this.stopFaceCamera();
+          this.redirectUser();
+        },
+        error: (err) => {
+          this.isLoading = false;
+          this.showToast(err.error?.message || 'Visage non reconnu', 'error');
+        }
+      });
+    } catch (err: any) {
+      this.isLoading = false;
+      this.showToast(err.message || 'Erreur de capture', 'error');
+    }
   }
 
   onRegisterClient(event: Event): void {

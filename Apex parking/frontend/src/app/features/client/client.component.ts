@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { SubscriptionService } from '../../core/services/subscription.service';
@@ -7,6 +7,8 @@ import { ReservationService } from '../../core/services/reservation.service';
 import { ParkingService } from '../../core/services/parking.service';
 import { UserService } from '../../core/services/user.service';
 import { ComplaintService } from '../../core/services/complaint.service';
+import { WebauthnService } from '../../core/services/webauthn.service';
+import { FaceAuthService } from '../../core/services/face-auth.service';
 import { environment } from '../../../environments/environment';
 
 @Component({
@@ -51,6 +53,12 @@ export class ClientComponent implements OnInit, OnDestroy {
   profilePasswordConfirm = '';
   profileSaving = false;
   profileLoadError = '';
+  securityLoading = false;
+  passkeySupported = false;
+  faceEnrollCameraActive = false;
+  faceAuthMockMode = false;
+
+  @ViewChild('enrollVideo') enrollVideoRef?: ElementRef<HTMLVideoElement>;
 
   // Booking details
   selectedParkingForBooking: any = null;
@@ -95,11 +103,17 @@ export class ClientComponent implements OnInit, OnDestroy {
     private userService: UserService,
     private complaintService: ComplaintService,
     public authService: AuthService,
+    private webauthnService: WebauthnService,
+    private faceAuthService: FaceAuthService,
     private route: ActivatedRoute,
     private router: Router
   ) {}
 
   ngOnInit(): void {
+    this.passkeySupported = this.webauthnService.isSupported();
+    this.faceAuthService.getStatus().subscribe({
+      next: (status) => { this.faceAuthMockMode = !!status.mockMode; }
+    });
     this.route.queryParams.subscribe(params => {
       const section = params['section'];
       if (section === 'reservations' || section === 'subscriptions' || section === 'profile' || section === 'parkings' || section === 'complaints') {
@@ -128,6 +142,7 @@ export class ClientComponent implements OnInit, OnDestroy {
     if (this.countdownTimer) {
       clearInterval(this.countdownTimer);
     }
+    this.stopFaceEnrollCamera();
   }
 
   private handlePaymentReturn(params: Record<string, string>): void {
@@ -953,5 +968,90 @@ export class ClientComponent implements OnInit, OnDestroy {
       other: 'Autre'
     };
     return map[category] || category;
+  }
+
+  private getSecurityErrorMessage(err: any, fallback: string): string {
+    if (err?.status === 0) {
+      return 'Impossible de joindre le serveur. Redémarrez le backend (npm start).';
+    }
+    if (err?.status === 404) {
+      return 'Routes de sécurité introuvables. Redémarrez le backend après la mise à jour.';
+    }
+    return err?.error?.message || err?.message || fallback;
+  }
+
+  async registerPasskey(): Promise<void> {
+    if (!this.passkeySupported) {
+      this.showToast('WebAuthn non supporté sur ce navigateur', 'error');
+      return;
+    }
+    this.securityLoading = true;
+    try {
+      await this.webauthnService.registerPasskey('Passkey Apex');
+      this.showToast('Passkey enregistrée avec succès !');
+      this.loadProfile();
+    } catch (err: any) {
+      this.showToast(this.getSecurityErrorMessage(err, 'Échec de l\'enregistrement de la passkey'), 'error');
+    } finally {
+      this.securityLoading = false;
+    }
+  }
+
+  async startFaceEnrollCamera(): Promise<void> {
+    const video = this.enrollVideoRef?.nativeElement;
+    if (!video) return;
+    try {
+      await this.faceAuthService.startCamera(video);
+      this.faceEnrollCameraActive = true;
+    } catch {
+      this.showToast('Impossible d\'accéder à la caméra', 'error');
+    }
+  }
+
+  stopFaceEnrollCamera(): void {
+    this.faceAuthService.stopCamera();
+    this.faceEnrollCameraActive = false;
+  }
+
+  enrollFace(): void {
+    const video = this.enrollVideoRef?.nativeElement;
+    if (!video || !this.faceEnrollCameraActive) {
+      this.showToast('Activez la caméra avant l\'enregistrement', 'error');
+      return;
+    }
+    this.securityLoading = true;
+    try {
+      const image = this.faceAuthService.captureFrame(video);
+      this.faceAuthService.enrollFace(image).subscribe({
+        next: () => {
+          this.securityLoading = false;
+          this.showToast('Reconnaissance faciale activée !');
+          this.stopFaceEnrollCamera();
+          this.loadProfile();
+        },
+        error: (err) => {
+          this.securityLoading = false;
+          this.showToast(this.getSecurityErrorMessage(err, 'Échec de l\'enregistrement du visage'), 'error');
+        }
+      });
+    } catch (err: any) {
+      this.securityLoading = false;
+      this.showToast(err.message || 'Erreur de capture', 'error');
+    }
+  }
+
+  removeFaceEnrollment(): void {
+    this.securityLoading = true;
+    this.faceAuthService.removeEnrollment().subscribe({
+      next: () => {
+        this.securityLoading = false;
+        this.showToast('Reconnaissance faciale désactivée.');
+        this.loadProfile();
+      },
+      error: (err) => {
+        this.securityLoading = false;
+        this.showToast(err.error?.message || 'Erreur', 'error');
+      }
+    });
   }
 }

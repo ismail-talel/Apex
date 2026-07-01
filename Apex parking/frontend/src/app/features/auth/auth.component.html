@@ -13,7 +13,20 @@
       </div>
 
       <!-- Login -->
-      <form *ngIf="activeTab === 'login'" (submit)="onLogin($event)">
+      <div *ngIf="activeTab === 'login'">
+        <div class="login-mode-tabs">
+          <button type="button" [class.active]="loginMode === 'password'" (click)="switchLoginMode('password')">
+            <i class="fa-solid fa-lock"></i> Mot de passe
+          </button>
+          <button type="button" [class.active]="loginMode === 'passkey'" (click)="switchLoginMode('passkey')" [disabled]="!passkeySupported">
+            <i class="fa-solid fa-fingerprint"></i> Passkey
+          </button>
+          <button type="button" [class.active]="loginMode === 'face'" (click)="switchLoginMode('face')" [disabled]="!cameraSupported">
+            <i class="fa-solid fa-face-smile"></i> Visage
+          </button>
+        </div>
+
+        <form *ngIf="loginMode === 'password'" (submit)="onLogin($event)">
         <div class="demo-accounts">
           <div class="demo-credentials demo-client">
             <strong>Compte test client</strong>
@@ -49,7 +62,43 @@
         <div class="auth-footer-links">
           <a (click)="switchTab('forgot')">Mot de passe oublié ?</a>
         </div>
-      </form>
+        </form>
+
+        <!-- Passkey Login -->
+        <div *ngIf="loginMode === 'passkey'" class="alt-login-panel">
+          <p class="alt-login-hint">
+            Connectez-vous avec votre empreinte digitale, Face ID ou clé de sécurité (WebAuthn).
+            Enregistrez une passkey depuis votre profil après une première connexion classique.
+          </p>
+          <div class="form-group">
+            <label>Email du compte</label>
+            <input type="email" class="form-control" [(ngModel)]="loginEmail" name="passkeyEmail" placeholder="votre@email.com" required>
+          </div>
+          <button type="button" class="btn btn-primary" (click)="onPasskeyLogin()" [disabled]="isLoading || !passkeySupported">
+            <i class="fa-solid fa-fingerprint"></i>
+            <span>{{ isLoading ? 'Vérification...' : 'Se connecter avec Passkey' }}</span>
+          </button>
+        </div>
+
+        <!-- Face Login -->
+        <div *ngIf="loginMode === 'face'" class="alt-login-panel">
+          <p class="alt-login-hint">
+            Reconnaissance faciale via Amazon Rekognition.
+            <span *ngIf="faceAuthMockMode"> Mode développement actif (sans AWS).</span>
+            Enregistrez votre visage depuis votre profil client.
+          </p>
+          <div class="face-camera-wrap">
+            <video #faceVideo class="face-video" autoplay playsinline muted></video>
+          </div>
+          <button type="button" class="btn btn-secondary face-camera-btn" (click)="startFaceCamera()" *ngIf="!faceCameraActive">
+            <i class="fa-solid fa-camera"></i> Activer la caméra
+          </button>
+          <button type="button" class="btn btn-primary" (click)="onFaceLogin()" [disabled]="isLoading || !faceCameraActive">
+            <i class="fa-solid fa-face-smile"></i>
+            <span>{{ isLoading ? 'Analyse...' : 'Se connecter par visage' }}</span>
+          </button>
+        </div>
+      </div>
 
       <!-- Register Client -->
       <form *ngIf="activeTab === 'register-client'" (submit)="onRegisterClient($event)">
